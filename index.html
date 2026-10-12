@@ -1,0 +1,2480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalitpur Holidays — Invoice Generator</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%8F%94%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   1. DESIGN TOKENS & BASE
+   ============================================================ */
+:root{
+  --teal-900:#07333b;
+  --teal-800:#0b434e;
+  --teal:#0e5663;
+  --teal-100:#dbeaee;
+  --teal-50:#eef6f7;
+  --accent:#d96b28;          /* warm terracotta accent */
+  --accent-ink:#b4531c;      /* accent dark enough for text on white */
+  --accent-50:#fdf1e8;
+  --bg:#edf1f2;
+  --card:#ffffff;
+  --ink:#20343a;
+  --muted:#51686f;
+  --line:#d7e2e4;
+  --danger:#b3261e;
+  --ok:#1e7a4f;
+  --radius:10px;
+  --shadow:0 1px 3px rgba(7,51,59,.10), 0 8px 24px rgba(7,51,59,.08);
+  --font:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.5;
+}
+h1,h2,h3,h4{margin:0;font-weight:700}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-radius:4px}
+
+/* ============================================================
+   2. TOOLBAR
+   ============================================================ */
+.toolbar{
+  position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;gap:10px;flex-wrap:nowrap;
+  overflow-x:auto;scrollbar-width:thin;
+  padding:10px 20px;
+  background:linear-gradient(90deg, var(--teal-900), var(--teal-800));
+  color:#fff;
+  box-shadow:0 2px 10px rgba(7,51,59,.35);
+}
+.toolbar .brand{display:flex;align-items:center;gap:10px;margin-right:6px;flex-shrink:0}
+.toolbar .brand .mark{
+  width:36px;height:36px;border-radius:9px;
+  background:linear-gradient(135deg, var(--accent), #c65c1f);color:#fff;
+  display:grid;place-items:center;font-weight:800;font-size:15px;letter-spacing:.5px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25);
+}
+.toolbar .brand h1{font-size:16px;line-height:1.2;white-space:nowrap}
+.toolbar .brand small{display:block;font-weight:400;font-size:11.5px;opacity:.72;letter-spacing:.3px;white-space:nowrap}
+.tb-actions{display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0}
+.tb-divider{width:1px;height:22px;background:rgba(255,255,255,.22);margin:0 4px;flex-shrink:0}
+.btn{
+  border:1px solid rgba(255,255,255,.30);background:rgba(255,255,255,.08);color:#fff;
+  padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;
+  cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+  transition:background .15s, border-color .15s, transform .05s;
+}
+.btn:hover{background:rgba(255,255,255,.18)}
+.btn:active{transform:translateY(1px)}
+.btn svg{width:16px;height:16px;flex-shrink:0}
+.btn-accent{
+  background:linear-gradient(180deg, var(--accent), #cc6324);border-color:#c65c1f;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25);
+}
+.btn-accent:hover{background:linear-gradient(180deg, #e0762f, #c65c1f)}
+.icon-btn{width:34px;height:34px;padding:0;justify-content:center;position:relative;flex-shrink:0}
+.icon-btn svg{width:17px;height:17px}
+.icon-btn .count{
+  position:absolute;top:-5px;right:-5px;
+  background:var(--accent);color:#fff;border-radius:99px;
+  min-width:16px;height:16px;line-height:16px;padding:0 4px;font-size:10px;font-weight:700;
+}
+.tb-label-btn{flex-shrink:0}
+.btn-auth{max-width:180px;overflow:hidden}
+.btn-auth span{overflow:hidden;text-overflow:ellipsis}
+/* overflow (⋯) menu */
+.overflow-wrap{position:relative;flex-shrink:0}
+.tb-menu{
+  position:absolute;right:0;top:calc(100% + 8px);min-width:230px;
+  background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 14px 36px rgba(7,51,59,.20);padding:6px;display:none;z-index:120;
+}
+.tb-menu.open{display:block}
+.tb-menu button{
+  display:flex;width:100%;align-items:center;gap:10px;
+  padding:9px 10px;border:none;background:none;border-radius:7px;
+  font:inherit;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;text-align:left;
+}
+.tb-menu button:hover{background:var(--teal-50)}
+.tb-menu svg{width:16px;height:16px;color:var(--teal)}
+.tb-menu small{display:block;font-size:11px;font-weight:400;color:var(--muted)}
+
+/* ============================================================
+   3. APP LAYOUT (two panels)
+   ============================================================ */
+.app{
+  display:grid;
+  grid-template-columns:minmax(390px, 470px) 1fr;
+  gap:22px;
+  align-items:start;
+  max-width:1500px;margin:0 auto;
+  padding:22px;
+}
+@media (max-width:1020px){
+  .app{grid-template-columns:1fr}
+}
+
+/* ============================================================
+   4. FORM PANEL
+   ============================================================ */
+.form-panel{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+.form-panel details{border-bottom:1px solid var(--line)}
+.form-panel details:last-of-type{border-bottom:none}
+.form-panel summary{
+  list-style:none;cursor:pointer;user-select:none;
+  padding:12px 18px;
+  font-weight:700;font-size:12.5px;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--teal);
+  display:flex;align-items:center;gap:8px;
+  background:var(--teal-50);
+}
+.form-panel summary::-webkit-details-marker{display:none}
+.form-panel summary::after{
+  content:"▾";margin-left:auto;color:var(--muted);transition:transform .15s;
+}
+.form-panel details[open] summary::after{transform:rotate(180deg)}
+.section-body{padding:16px 18px 18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:480px){.grid2{grid-template-columns:1fr}}
+.field{margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.field input[type="text"],.field input[type="email"],.field input[type="tel"],
+.field input[type="date"],.field input[type="number"],.field select,.field textarea{
+  width:100%;padding:8px 10px;
+  border:1px solid var(--line);border-radius:8px;
+  font:inherit;color:var(--ink);background:#fff;
+}
+.field textarea{resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{
+  border-color:var(--teal);outline:2px solid var(--teal-100);outline-offset:0;
+}
+.field input.invalid{border-color:var(--danger);background:#fdf3f2}
+.err-msg{display:none;color:var(--danger);font-size:12px;margin-top:4px}
+.err-msg.show{display:block}
+.hint{font-size:11.5px;color:var(--muted);margin-top:4px}
+
+/* logo / QR upload rows */
+.upload-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.file-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  border:1px dashed var(--teal);color:var(--teal);
+  padding:7px 12px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;
+}
+.file-btn:hover{background:var(--teal-50)}
+.thumb{
+  width:52px;height:52px;border:1px solid var(--line);border-radius:8px;
+  display:none;align-items:center;justify-content:center;overflow:hidden;background:#fff;
+}
+.thumb.show{display:flex}
+.thumb img{max-width:100%;max-height:100%;object-fit:contain}
+.thumb-remove{
+  border:none;background:none;color:var(--danger);cursor:pointer;
+  font-size:12px;font-weight:600;padding:4px;
+}
+
+/* line items editor — two-line rows: description on top,
+   unit / qty / price / total below (no overflow on narrow panels) */
+.items-head,.item-row{
+  display:grid;
+  grid-template-columns:82px 54px minmax(0,1fr) 100px 26px;
+  gap:6px 8px;align-items:center;
+}
+.items-head{
+  font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:6px;
+}
+.items-head .h-desc{grid-column:1/6;grid-row:1}
+.items-head span:nth-child(3),.items-head span:nth-child(4),.items-head span:nth-child(5){text-align:right}
+.item-row{margin-bottom:10px}
+.item-row .desc-cell{grid-column:1/5;grid-row:1}
+.item-row .row-del{grid-column:5;grid-row:1;justify-self:end}
+.item-row input,.item-row select{
+  width:100%;padding:7px 6px;border:1px solid var(--line);border-radius:7px;font:inherit;
+  min-width:0;background:#fff;
+}
+.item-row input:focus,.item-row select:focus{border-color:var(--teal);outline:2px solid var(--teal-100)}
+.item-row input[type="number"]{text-align:right}
+.item-row .row-total{
+  font-size:12.5px;font-weight:600;text-align:right;color:var(--teal);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.row-del{
+  width:28px;height:28px;border-radius:6px;border:1px solid var(--line);
+  background:#fff;color:var(--danger);font-size:15px;line-height:1;cursor:pointer;
+}
+.row-del:hover{background:#fdf1f0;border-color:#e8b6b3}
+
+/* totals options */
+.opt-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-bottom:12px}
+.opt-row label.main{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px;color:var(--ink);white-space:nowrap}
+.opt-row input[type="checkbox"]{width:16px;height:16px;accent-color:var(--teal)}
+.opt-row .opt-input{display:flex;align-items:center;gap:6px}
+.opt-row .opt-input input{
+  width:90px;padding:7px 8px;border:1px solid var(--line);border-radius:7px;font:inherit;text-align:right;
+}
+.opt-row .opt-input select{padding:7px 6px;border:1px solid var(--line);border-radius:7px;font:inherit}
+.opt-row .suffix{font-size:12px;color:var(--muted);min-width:18px;text-align:center}
+.opt-row input:disabled{background:#f2f5f5;color:var(--muted)}
+
+/* ============================================================
+   5. PREVIEW PANEL & INVOICE PAPER
+   ============================================================ */
+.preview-panel{
+  position:sticky;top:70px;
+  max-height:calc(100vh - 92px);
+  overflow:auto;
+  padding:4px;
+}
+@media (max-width:1020px){.preview-panel{position:static;max-height:none;overflow:visible}}
+.invoice-paper{
+  background:#fff;
+  max-width:830px;margin:0 auto;
+  min-height:1060px;
+  padding:40px 44px 30px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  box-shadow:var(--shadow);
+  position:relative;
+  display:flex;flex-direction:column;
+}
+
+/* header */
+.inv-top{
+  display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;
+  padding-bottom:18px;border-bottom:3px solid var(--teal);
+}
+.inv-brand{display:flex;gap:14px;align-items:flex-start;min-width:260px}
+.inv-logo{
+  width:58px;height:58px;border-radius:10px;flex-shrink:0;
+  background:var(--teal);color:#fff;
+  display:grid;place-items:center;font-weight:800;font-size:20px;
+  overflow:hidden;
+}
+.inv-logo img{width:100%;height:100%;object-fit:contain}
+.inv-brand h2{font-size:21px;color:var(--teal-900);letter-spacing:.2px}
+.inv-brand .tagline{font-size:10.5px;letter-spacing:2px;text-transform:uppercase;color:var(--accent-ink);font-weight:700;margin:1px 0 5px}
+.inv-company-details{font-size:12px;color:var(--muted);line-height:1.55}
+.inv-meta{text-align:right;margin-left:auto}
+.inv-title{font-size:26px;font-weight:800;letter-spacing:5px;color:var(--teal);text-transform:uppercase}
+.inv-meta-rows{margin-top:8px;font-size:12.5px}
+.inv-meta-rows .row{display:flex;justify-content:flex-end;gap:12px}
+.inv-meta-rows .row span{color:var(--muted)}
+.inv-meta-rows .row strong{min-width:110px;text-align:right}
+.inv-due{
+  margin-top:10px;display:inline-block;
+  background:var(--teal-50);border:1px solid var(--teal-100);
+  padding:6px 12px;border-radius:8px;font-size:12px;color:var(--muted);
+}
+.inv-due strong{display:block;font-size:17px;color:var(--teal-900)}
+.inv-due.paid strong{color:var(--ok)}
+
+/* badges & stamp */
+.badge{
+  display:inline-block;padding:3px 10px;border-radius:99px;
+  font-size:10.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;
+}
+.st-draft{background:#e8ecec;color:#51686f}
+.st-unpaid{background:#fdecea;color:var(--danger)}
+.st-partial{background:#fff1e2;color:var(--accent-ink)}
+.st-paid{background:#e2f4eb;color:var(--ok)}
+
+/* bill to / trip */
+.inv-billtrip{
+  display:grid;grid-template-columns:1fr 1fr;gap:16px;
+  margin:20px 0 18px;
+}
+.inv-billtrip h3{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.inv-billto .name{font-size:15.5px;font-weight:700;color:var(--teal-900)}
+.inv-billto .sub{font-size:12.5px;color:var(--muted);line-height:1.6;white-space:pre-line}
+.inv-trip{
+  background:var(--teal-50);border:1px solid var(--teal-100);border-radius:8px;
+  padding:12px 14px;font-size:12.5px;
+}
+.inv-trip .pkg{font-weight:700;color:var(--teal-900);margin-bottom:4px}
+.inv-trip .sub{color:var(--muted);line-height:1.6}
+.inv-trip .child-note{margin-top:4px;font-size:11px;color:var(--accent-ink)}
+.inv-trip-empty{
+  border:1px dashed var(--line);border-radius:8px;padding:12px 14px;
+  font-size:12px;color:var(--muted);text-align:center;align-self:start;
+}
+@media (max-width:620px){.inv-billtrip{grid-template-columns:1fr}}
+
+/* items table */
+.inv-items{width:100%;border-collapse:collapse;font-size:12.5px}
+.inv-items th{
+  background:var(--teal-800);color:#fff;text-align:left;
+  font-size:10.5px;letter-spacing:.8px;text-transform:uppercase;
+  padding:8px 10px;
+}
+.inv-items th.num,.inv-items td.num{text-align:right}
+.inv-items td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.inv-items tbody tr:nth-child(even){background:var(--teal-50)}
+.inv-items .empty-row td{text-align:center;color:var(--muted);padding:22px;font-style:italic}
+.inv-items .unit-tag{display:block;font-size:9.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);line-height:1.3;margin-top:1px}
+
+/* totals & words */
+.inv-bottom{display:flex;gap:24px;margin-top:18px;align-items:flex-start;flex-wrap:wrap}
+.inv-words{flex:1 1 260px;min-width:240px}
+.inv-words h4,.inv-pay h4,.inv-notes h4{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.inv-words .box{
+  background:var(--accent-50);border:1px solid #f3ddc9;border-radius:8px;
+  padding:10px 12px;font-size:13px;font-weight:600;color:var(--accent-ink);
+}
+.totals-wrap{position:relative;flex:0 1 330px;margin-left:auto;min-width:280px}
+.inv-totals{width:100%;border-collapse:collapse;font-size:13px}
+.inv-totals td{padding:6px 10px}
+.inv-totals td:first-child{color:var(--muted)}
+.inv-totals td:last-child{text-align:right;font-weight:600;white-space:nowrap}
+.inv-totals tr.grand td{
+  border-top:2px solid var(--teal);border-bottom:2px solid var(--teal);
+  padding:9px 10px;font-size:15px;font-weight:800;color:var(--teal-900);
+}
+.inv-totals tr.balance td{color:var(--accent-ink);font-weight:800}
+.inv-totals tr.balance td:last-child{font-size:15px}
+.inv-totals tr.settled td{color:var(--ok)}
+.stamp{
+  position:absolute;top:-58px;right:-6px;z-index:5;
+  transform:rotate(-12deg);
+  border:3px double var(--ok);color:var(--ok);
+  border-radius:8px;padding:5px 16px;
+  font-size:23px;font-weight:800;letter-spacing:6px;
+  opacity:.8;background:rgba(255,255,255,.65);
+}
+
+/* payment / notes / signature */
+.inv-pay{
+  display:flex;gap:24px;margin-top:24px;padding-top:16px;border-top:1px solid var(--line);
+  flex-wrap:wrap;
+}
+.inv-pay .pay-details{flex:1 1 300px;font-size:12.5px;line-height:1.7}
+.inv-pay .pay-details b{color:var(--teal-900)}
+.inv-qr{
+  width:120px;height:120px;flex-shrink:0;
+  border:1.5px dashed var(--teal);border-radius:8px;
+  display:grid;place-items:center;text-align:center;
+  font-size:10px;color:var(--muted);line-height:1.4;padding:6px;
+}
+.inv-qr img{width:100%;height:100%;object-fit:contain}
+.inv-notes{margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media (max-width:620px){.inv-notes{grid-template-columns:1fr}}
+.inv-notes p{margin:0;font-size:11.8px;color:var(--muted);white-space:pre-line;line-height:1.65}
+.inv-sign{margin-top:34px;display:flex;justify-content:flex-end}
+.inv-sign .block{text-align:center}
+.inv-sign .line{width:220px;border-bottom:1.5px solid var(--ink);margin-bottom:6px;height:34px}
+.inv-sign .who{font-size:12px;font-weight:700;color:var(--teal-900)}
+.inv-sign .co{font-size:11px;color:var(--muted)}
+.inv-footer{
+  margin-top:auto;padding-top:18px;
+}
+.inv-footer .bar{height:4px;background:linear-gradient(90deg,var(--teal),var(--accent));border-radius:99px;margin-bottom:8px}
+.inv-footer .txt{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--muted)}
+
+/* ============================================================
+   6. HISTORY MODAL & TOAST
+   ============================================================ */
+.modal-overlay{
+  display:none;position:fixed;inset:0;z-index:100;
+  background:rgba(7,51,59,.55);
+  align-items:center;justify-content:center;padding:20px;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.3);
+  width:100%;max-width:900px;max-height:85vh;display:flex;flex-direction:column;
+}
+.modal-head{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 20px;border-bottom:1px solid var(--line);
+}
+.modal-head h2{font-size:16px;color:var(--teal-900)}
+.modal-head input{
+  margin-left:auto;max-width:260px;width:100%;
+  padding:8px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;
+}
+.modal-close{
+  border:none;background:none;font-size:22px;line-height:1;cursor:pointer;
+  color:var(--muted);padding:4px 8px;border-radius:6px;
+}
+.modal-close:hover{background:var(--teal-50);color:var(--teal)}
+.settings-note{margin-left:auto;font-size:11.5px;color:var(--muted)}
+
+/* packages catalog */
+#btnNewPackage{margin-left:auto}
+.pkg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.pkg-card{
+  border:1px solid var(--line);border-radius:10px;padding:14px;
+  display:flex;flex-direction:column;gap:8px;background:#fff;
+}
+.pkg-card h3{font-size:14.5px;color:var(--teal-900);line-height:1.3}
+.pkg-dur{
+  display:inline-block;align-self:flex-start;
+  background:var(--teal-50);color:var(--teal);
+  font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;
+}
+.pkg-price{font-size:16px;font-weight:800;color:var(--teal-900)}
+.pkg-price small{font-weight:600;color:var(--muted);font-size:11px}
+.pkg-extra{font-size:12px;color:var(--accent-ink)}
+.pkg-occ{
+  width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px;
+  font:inherit;font-size:12.5px;background:#fff;color:var(--ink);
+}
+.pkg-dates{display:flex;flex-wrap:wrap;gap:6px}
+.pkg-date{
+  border:1px solid var(--line);border-radius:6px;font-size:11px;
+  padding:2px 7px;color:var(--muted);background:var(--bg);
+}
+.pkg-actions{display:flex;gap:6px;margin-top:auto;padding-top:6px;flex-wrap:wrap}
+.mini-btn.add{background:var(--teal);border-color:var(--teal);color:#fff}
+.mini-btn.add:hover{background:var(--teal-800)}
+.pkg-editor{
+  display:none;border:1px solid var(--teal-100);background:var(--teal-50);
+  border-radius:10px;padding:14px;margin-bottom:16px;
+}
+.pkg-editor.open{display:block}
+.pkg-editor h3{font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--teal);margin-bottom:10px}
+.pkg-editor-actions{display:flex;gap:8px;align-items:center;margin-top:4px}
+
+/* cloud sync chip & login */
+.cloud-status{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:99px;
+  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.28);color:#fff;
+}
+.cloud-status .dot{width:8px;height:8px;border-radius:99px;background:#aab4b8;flex-shrink:0}
+.cloud-status.ok .dot{background:#41d98d}
+.cloud-status.busy .dot{background:#f2b34c;animation:pulse 1s infinite}
+.cloud-status.err .dot{background:#ff6b5e}
+.cloud-status.off .dot{background:#f2b34c}
+@keyframes pulse{50%{opacity:.35}}
+.modal-sm{max-width:380px}
+.login-btn{width:100%;justify-content:center;margin-top:4px}
+.modal-body{overflow:auto;padding:6px 20px 20px}
+.hist-empty{padding:34px 0;text-align:center;color:var(--muted)}
+.hist-row{
+  display:grid;
+  grid-template-columns:130px 92px 1fr 130px 110px 168px;
+  gap:10px;align-items:center;
+  padding:10px 8px;border-bottom:1px solid var(--line);font-size:12.5px;
+}
+.hist-row.head{
+  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--muted);border-bottom:2px solid var(--teal-100);position:sticky;top:0;background:#fff;
+}
+.hist-row .num{font-weight:700;color:var(--teal-900)}
+.hist-row .cust b{display:block}
+.hist-row .cust small{color:var(--muted)}
+.hist-row .amt{text-align:right;font-weight:700;color:var(--teal-900);white-space:nowrap}
+.hist-actions{display:flex;gap:6px;justify-content:flex-end}
+.mini-btn{
+  border:1px solid var(--line);background:#fff;color:var(--teal);
+  font-size:11.5px;font-weight:600;padding:5px 9px;border-radius:6px;cursor:pointer;
+}
+.mini-btn:hover{background:var(--teal-50);border-color:var(--teal-100)}
+.mini-btn.danger{color:var(--danger)}
+.mini-btn.danger:hover{background:#fdf1f0;border-color:#e8b6b3}
+@media (max-width:760px){
+  .hist-row{grid-template-columns:1fr 1fr;row-gap:4px}
+  .hist-row.head{display:none}
+  .hist-row .cust{grid-column:1 / -1}
+}
+
+.toast{
+  position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--teal-900);color:#fff;font-size:13px;font-weight:600;
+  padding:10px 20px;border-radius:99px;box-shadow:0 8px 24px rgba(0,0,0,.25);
+  opacity:0;pointer-events:none;transition:all .25s;z-index:200;
+  max-width:90vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ============================================================
+   7. PRINT — A4, invoice only
+   ============================================================ */
+/* margin 0 is deliberate: browser print headers/footers (date, title,
+   file URL) are drawn inside the page margin — with no margin they are
+   suppressed. The invoice adds its own padding below. */
+@page{size:A4;margin:0}
+@media print{
+  body{background:#fff;font-size:12px}
+  .toolbar,.form-panel,.modal-overlay,.toast,#importFile{display:none !important}
+  .app{display:block;padding:0;max-width:none}
+  .preview-panel{position:static;max-height:none;overflow:visible;padding:0}
+  .invoice-paper{
+    width:100%;max-width:none;min-height:0;margin:0;
+    padding:14mm 12mm 16mm;
+    border:none;border-radius:0;box-shadow:none;
+  }
+  .inv-top,.inv-billtrip,.inv-items,.inv-bottom,.inv-pay,.inv-notes,.inv-sign{break-inside:avoid}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== TOOLBAR ===================== -->
+<header class="toolbar">
+  <div class="brand">
+    <div class="mark" aria-hidden="true">LH</div>
+    <h1>Lalitpur Holidays <small>Invoice Generator · Lalitpur, Nepal</small></h1>
+  </div>
+  <div class="tb-actions">
+    <button type="button" class="btn icon-btn" id="btnNew" title="New invoice" aria-label="New invoice">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button type="button" class="btn icon-btn" id="btnHistory" title="Invoice history" aria-label="Invoice history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+      <span class="count" id="historyCount">0</span>
+    </button>
+    <button type="button" class="btn icon-btn" id="btnPackages" title="Tour packages" aria-label="Tour packages">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+    </button>
+    <button type="button" class="btn icon-btn" id="btnSettings" title="Company settings — details, logo &amp; payment info" aria-label="Company settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+    <div class="overflow-wrap">
+      <button type="button" class="btn icon-btn" id="btnMore" title="More actions" aria-label="More actions" aria-haspopup="menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+      </button>
+      <div class="tb-menu" id="tbMenu" role="menu">
+        <button type="button" id="btnPng" role="menuitem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></svg>
+          <span>Download PNG<small>Image of this invoice</small></span>
+        </button>
+        <button type="button" id="btnExport" role="menuitem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></svg>
+          <span>Export backup<small>All invoices as JSON</small></span>
+        </button>
+        <button type="button" id="btnImport" role="menuitem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/></svg>
+          <span>Import backup<small>Restore from JSON file</small></span>
+        </button>
+      </div>
+    </div>
+    <span class="tb-divider" aria-hidden="true"></span>
+    <span class="cloud-status" id="cloudStatus" hidden><span class="dot"></span><span id="cloudText"></span></span>
+    <button type="button" class="btn btn-auth" id="btnAuth" hidden title="Staff sign in / sign out">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span id="authLabel">Sign in</span>
+    </button>
+    <button type="button" class="btn tb-label-btn" id="btnPrint" title="Open the print dialog — untick 'Headers and footers' for a fully clean page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print
+    </button>
+    <button type="button" class="btn tb-label-btn" id="btnPdf" title="Download a clean PDF — no date, title or URL lines, ever">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
+      PDF
+    </button>
+    <button type="button" class="btn btn-accent tb-label-btn" id="btnSave" title="Save this invoice to history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+      Save
+    </button>
+  </div>
+</header>
+
+<main class="app">
+
+  <!-- ===================== FORM PANEL ===================== -->
+  <form id="appForm" class="form-panel" novalidate autocomplete="off">
+
+    <!-- Invoice meta -->
+    <details open>
+      <summary>Invoice</summary>
+      <div class="section-body">
+        <div class="grid2">
+          <div class="field">
+            <label for="invNumber">Invoice number</label>
+            <input type="text" id="invNumber" data-bind="number">
+          </div>
+          <div class="field">
+            <label for="currencySel">Currency</label>
+            <select id="currencySel" data-bind="currency">
+              <option value="NPR">NPR — Nepali Rupee (Rs.)</option>
+              <option value="INR">INR — Indian Rupee (₹)</option>
+              <option value="USD">USD — US Dollar ($)</option>
+              <option value="EUR">EUR — Euro (€)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="invDate">Invoice date</label>
+            <input type="date" id="invDate" data-bind="date">
+          </div>
+          <div class="field">
+            <label for="dueDate">Due date</label>
+            <input type="date" id="dueDate" data-bind="dueDate">
+          </div>
+        </div>
+        <div class="field">
+          <label for="statusMode">Status</label>
+          <select id="statusMode" data-bind="statusMode">
+            <option value="auto">Auto (from amount paid)</option>
+            <option value="Draft">Draft</option>
+            <option value="Unpaid">Unpaid</option>
+            <option value="Partially Paid">Partially Paid</option>
+            <option value="Paid">Paid</option>
+          </select>
+          <p class="hint">Auto shows Draft when the total is 0, Unpaid / Partially Paid / Paid based on the advance received.</p>
+        </div>
+      </div>
+    </details>
+
+    <!-- Bill To -->
+    <details open>
+      <summary>Bill To</summary>
+      <div class="section-body">
+        <div class="field">
+          <label for="custName">Customer name (required)</label>
+          <input type="text" id="custName" data-bind="customer.name" aria-required="true">
+          <div class="err-msg" id="custNameError">Customer name is required before saving.</div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="custPhone">Phone</label>
+            <input type="tel" id="custPhone" data-bind="customer.phone">
+          </div>
+          <div class="field">
+            <label for="custEmail">Email</label>
+            <input type="email" id="custEmail" data-bind="customer.email">
+          </div>
+        </div>
+        <div class="field">
+          <label for="custAddress">Address</label>
+          <input type="text" id="custAddress" data-bind="customer.address">
+        </div>
+        <div class="field">
+          <label for="custNationality">Nationality (optional)</label>
+          <input type="text" id="custNationality" data-bind="customer.nationality" placeholder="e.g. Nepali, Indian, German…">
+        </div>
+      </div>
+    </details>
+
+    <!-- Trip -->
+    <details open>
+      <summary>Trip Details &amp; Travel Dates (optional)</summary>
+      <div class="section-body">
+        <div class="field">
+          <label for="tripPackage">Package / tour name</label>
+          <input type="text" id="tripPackage" data-bind="trip.package" placeholder="e.g. Annapurna Base Camp Trek">
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="tripStart">Travel start date</label>
+            <input type="date" id="tripStart" data-bind="trip.start">
+          </div>
+          <div class="field">
+            <label for="tripEnd">Travel end date</label>
+            <input type="date" id="tripEnd" data-bind="trip.end">
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="tripAdults">Adults (12+)</label>
+            <input type="number" id="tripAdults" data-bind="trip.adults" data-type="num-optional" min="0" step="1" placeholder="e.g. 2">
+          </div>
+          <div class="field">
+            <label for="tripChildren">Children (below 12)</label>
+            <input type="number" id="tripChildren" data-bind="trip.children" data-type="num-optional" min="0" step="1" placeholder="e.g. 1">
+          </div>
+        </div>
+        <div class="field">
+          <label for="childPolicy">Child pricing (below 7 years)</label>
+          <select id="childPolicy" data-bind="trip.childPolicy">
+            <option value="full">Full price (7+ or full seat/bed)</option>
+            <option value="half">Half price (sharing — full charge if a full seat is taken)</option>
+            <option value="free">Free (sharing — full charge if a full seat is taken)</option>
+          </select>
+          <p class="hint">Shown on the invoice: a child below 7 gets the selected rate only while sharing; occupying a full seat/bed is always charged.</p>
+        </div>
+      </div>
+    </details>
+
+    <!-- Line items -->
+    <details open>
+      <summary>Line Items</summary>
+      <div class="section-body">
+        <div class="items-head" aria-hidden="true">
+          <span class="h-desc">Description</span>
+          <span>Unit</span><span>Qty</span><span>Unit Price</span><span>Total</span><span></span>
+        </div>
+        <div id="itemsRows"></div>
+        <button type="button" class="file-btn" id="btnAddItem">+ Add item</button>
+        <p class="hint">Tour packages are priced per person — set qty to the number of travelers. Choose “Per vehicle” for vehicle rent, or rooms / days / flat as needed.</p>
+      </div>
+    </details>
+
+    <!-- Discount / taxes / paid -->
+    <details open>
+      <summary>Discount, VAT &amp; Advance</summary>
+      <div class="section-body">
+        <div class="opt-row">
+          <label class="main" for="discountValue">Discount</label>
+          <div></div>
+          <div class="opt-input">
+            <select id="discountType" data-bind="opts.discountType" aria-label="Discount type">
+              <option value="flat">Flat</option>
+              <option value="percent">%</option>
+            </select>
+            <input type="number" id="discountValue" data-bind="opts.discountValue" data-type="number" min="0" step="any" placeholder="0">
+            <span class="suffix" id="discountSuffix">Rs.</span>
+          </div>
+        </div>
+        <div class="opt-row">
+          <label class="main" for="vatRate">VAT <input type="checkbox" id="vatEnabled" data-bind="opts.vatEnabled" checked></label>
+          <div></div>
+          <div class="opt-input">
+            <input type="number" id="vatRate" data-bind="opts.vatRate" data-type="number" min="0" step="any">
+            <span class="suffix">%</span>
+          </div>
+        </div>
+        <div class="opt-row">
+          <label class="main" for="serviceRate">Service charge <input type="checkbox" id="serviceEnabled" data-bind="opts.serviceEnabled"></label>
+          <div></div>
+          <div class="opt-input">
+            <input type="number" id="serviceRate" data-bind="opts.serviceRate" data-type="number" min="0" step="any" disabled>
+            <span class="suffix">%</span>
+          </div>
+        </div>
+        <div class="opt-row">
+          <label class="main" for="paidAmount">Advance / paid</label>
+          <div></div>
+          <div class="opt-input">
+            <input type="number" id="paidAmount" data-bind="opts.paid" data-type="number" min="0" step="any" placeholder="0">
+            <span class="suffix" id="paidSuffix">Rs.</span>
+          </div>
+        </div>
+        <p class="hint">VAT and service charge apply to the subtotal after discount. Default VAT is 13% (Nepal).</p>
+      </div>
+    </details>
+
+    <!-- Notes & terms -->
+    <details>
+      <summary>Notes &amp; Terms</summary>
+      <div class="section-body">
+        <div class="field">
+          <label for="notesText">Notes (shown on invoice)</label>
+          <textarea id="notesText" data-bind="notes" rows="4"></textarea>
+        </div>
+        <div class="field">
+          <label for="termsText">Terms &amp; conditions</label>
+          <textarea id="termsText" data-bind="terms" rows="6"></textarea>
+        </div>
+      </div>
+    </details>
+  </form>
+
+  <!-- ===================== PREVIEW PANEL ===================== -->
+  <section class="preview-panel" aria-label="Live invoice preview">
+    <div class="invoice-paper" id="paper"></div>
+  </section>
+</main>
+
+<!-- ===================== LOGIN MODAL ===================== -->
+<div class="modal-overlay" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h2 id="loginTitle">Staff sign in</h2>
+      <button type="button" class="modal-close" id="loginClose" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" autocomplete="current-password" required>
+        </div>
+        <div class="err-msg" id="loginError"></div>
+        <button type="submit" class="btn btn-accent login-btn">Sign in</button>
+        <p class="hint">Staff accounts are created by the admin in the Supabase dashboard (see README.md). Everything syncs to the shared database after sign-in.</p>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PACKAGES MODAL ===================== -->
+<div class="modal-overlay" id="packagesModal" role="dialog" aria-modal="true" aria-labelledby="packagesTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="packagesTitle">🎒 Tour Packages</h2>
+      <button type="button" class="file-btn" id="btnNewPackage">+ New Package</button>
+      <button type="button" class="modal-close" id="packagesClose" aria-label="Close packages">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="pkg-editor" id="pkgEditor">
+        <h3 id="pkgEditorTitle">New Package</h3>
+        <input type="hidden" id="pkgEditId">
+        <div class="grid2">
+          <div class="field">
+            <label for="pkgName">Package name</label>
+            <input type="text" id="pkgName" placeholder="e.g. Upper Mustang Trek">
+          </div>
+          <div class="field">
+            <label for="pkgDuration">Duration</label>
+            <input type="text" id="pkgDuration" placeholder="e.g. 4 Nights / 5 Days">
+          </div>
+          <div class="field">
+            <label for="pkgPrice">Price per person (sharing)</label>
+            <input type="number" id="pkgPrice" min="0" step="any" placeholder="e.g. 15500">
+          </div>
+          <div class="field">
+            <label for="pkgCouple">Couple / private-room extra per person</label>
+            <input type="number" id="pkgCouple" min="0" step="any" placeholder="e.g. 1500">
+          </div>
+        </div>
+        <div class="field">
+          <label for="pkgDates">Available dates (comma separated)</label>
+          <input type="text" id="pkgDates" placeholder="2026-10-15, 2026-10-29, 2026-11-12">
+        </div>
+        <div class="pkg-editor-actions">
+          <button type="button" class="btn btn-accent" id="pkgSave">Save Package</button>
+          <button type="button" class="mini-btn" id="pkgCancel">Cancel</button>
+        </div>
+      </div>
+      <div class="pkg-grid" id="packagesList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SETTINGS MODAL ===================== -->
+<div class="modal-overlay" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="settingsTitle">⚙ Company Settings</h2>
+      <span class="settings-note">Saved automatically in this browser</span>
+      <button type="button" class="modal-close" id="settingsClose" aria-label="Close settings">×</button>
+    </div>
+    <div class="modal-body">
+      <details open>
+        <summary>Company Details</summary>
+        <div class="section-body">
+          <div class="field">
+            <label for="cName">Company name</label>
+            <input type="text" id="cName" data-bind="company.name">
+          </div>
+          <div class="upload-row">
+            <label class="file-btn">Upload logo…<input type="file" id="logoFile" accept="image/*" hidden></label>
+            <div class="thumb" id="logoThumbWrap"><img id="logoThumb" alt="Logo preview"></div>
+            <button type="button" class="thumb-remove" id="btnLogoRemove" hidden>Remove logo</button>
+          </div>
+          <div class="field">
+            <label for="logoSize">Logo size on invoice (px, 32–200)</label>
+            <input type="number" id="logoSize" data-bind="company.logoSize" data-type="number" min="32" max="200" step="1">
+          </div>
+          <div class="field">
+            <label for="cAddress">Address</label>
+            <input type="text" id="cAddress" data-bind="company.address">
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label for="cPhone">Phone</label>
+              <input type="tel" id="cPhone" data-bind="company.phone">
+            </div>
+            <div class="field">
+              <label for="cEmail">Email</label>
+              <input type="email" id="cEmail" data-bind="company.email">
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label for="cWebsite">Website</label>
+              <input type="text" id="cWebsite" data-bind="company.website">
+            </div>
+            <div class="field">
+              <label for="cPan">PAN / VAT number</label>
+              <input type="text" id="cPan" data-bind="company.pan">
+            </div>
+          </div>
+        </div>
+      </details>
+      <details open>
+        <summary>Payment Information</summary>
+        <div class="section-body">
+          <div class="field">
+            <label for="payBank">Bank name &amp; branch</label>
+            <input type="text" id="payBank" data-bind="company.bankName">
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label for="payAccountName">Account name</label>
+              <input type="text" id="payAccountName" data-bind="company.bankAccountName">
+            </div>
+            <div class="field">
+              <label for="payAccountNumber">Account number</label>
+              <input type="text" id="payAccountNumber" data-bind="company.bankAccountNumber">
+            </div>
+          </div>
+          <div class="field">
+            <label for="payNote">Wallet / other payment IDs</label>
+            <input type="text" id="payNote" data-bind="company.payNote">
+          </div>
+          <div class="upload-row">
+            <label class="file-btn">Upload eSewa / Khalti / FonePay QR…<input type="file" id="qrFile" accept="image/*" hidden></label>
+            <div class="thumb" id="qrThumbWrap"><img id="qrThumb" alt="QR preview"></div>
+            <button type="button" class="thumb-remove" id="btnQrRemove" hidden>Remove QR</button>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== HISTORY MODAL ===================== -->
+<div class="modal-overlay" id="historyModal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="historyTitle">Invoice History</h2>
+      <input type="search" id="historySearch" placeholder="Search by no., customer, package, status…" aria-label="Search invoices">
+      <button type="button" class="modal-close" id="historyClose" aria-label="Close history">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="hist-row head" aria-hidden="true">
+        <span>Invoice No.</span><span>Date</span><span>Customer</span><span>Total</span><span>Status</span><span style="text-align:right">Actions</span>
+      </div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="importFile" accept="application/json,.json">
+
+<!-- cloud mode: empty keys in config.js = pure offline mode (localStorage only) -->
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+/* ============================================================
+   1. CONSTANTS & DEFAULTS
+   ============================================================ */
+'use strict';
+
+const LS_INVOICES = 'lh_invoices';
+const LS_COMPANY  = 'lh_company';
+const LS_PACKAGES = 'lh_packages';
+const LS_DELETIONS = 'lh_deletions';
+const LS_SYNC_FLAG = 'lh_cloud_synced';
+
+/* qty units for line items: tour packages are per person,
+   vehicle rent per vehicle, plus rooms / days / flat */
+const UNITS = {
+  person:  { per: 'Per person',  plural: 'persons' },
+  vehicle: { per: 'Per vehicle', plural: 'vehicles' },
+  room:    { per: 'Per room',    plural: 'rooms' },
+  day:     { per: 'Per day',     plural: 'days' },
+  flat:    { per: 'Flat (each)', plural: '' },
+};
+const unitOptions = sel => Object.entries(UNITS)
+  .map(([k, u]) => '<option value="' + k + '"' +
+    (k === (UNITS[sel] ? sel : 'person') ? ' selected' : '') + '>' + u.per + '</option>')
+  .join('');
+
+const CURRENCIES = {
+  NPR: { symbol: 'Rs.', southAsian: true },
+  INR: { symbol: '₹',   southAsian: true },
+  USD: { symbol: '$',   southAsian: false },
+  EUR: { symbol: '€',   southAsian: false },
+};
+const WORDS = {   // currency names used when spelling the amount in words
+  NPR: { major: 'Rupees',     minor: 'Paisa', indian: true },
+  INR: { major: 'Rupees',     minor: 'Paisa', indian: true },
+  USD: { major: 'US Dollars', minor: 'Cents', indian: false },
+  EUR: { major: 'Euros',      minor: 'Cents', indian: false },
+};
+const STATUS_CLASS = {
+  'Draft': 'st-draft', 'Unpaid': 'st-unpaid',
+  'Partially Paid': 'st-partial', 'Paid': 'st-paid',
+};
+
+const DEFAULT_COMPANY = {
+  name: 'Lalitpur Holidays',
+  address: 'Jhamsikhel Road, Lalitpur 44700, Nepal',
+  phone: '+977-1-5000000',
+  email: 'info@lalitpurholidays.com',
+  website: 'www.lalitpurholidays.com',
+  pan: '601234567',
+  logoData: '',
+  logoSize: 58,
+  qrData: '',
+  bankName: 'Nabil Bank Ltd., Jawalakhel Branch',
+  bankAccountName: 'Lalitpur Holidays Pvt. Ltd.',
+  bankAccountNumber: '01234567890123',
+  payNote: 'eSewa: 9800000000 · Khalti: 9800000000 · FonePay: LH9800000000',
+};
+
+const DEFAULT_NOTES =
+  'Thank you for choosing Lalitpur Holidays. Please carry a printed or digital copy of this invoice at check-in. ' +
+  'Hotel check-in 2:00 PM, check-out 12:00 noon.';
+
+const DEFAULT_TERMS =
+  '1. A 50% advance confirms the booking; full payment is due before departure.\n' +
+  '2. Cancellation: 15+ days before departure — 90% refund; 7–14 days — 50% refund; less than 7 days — no refund.\n' +
+  '3. Permit fees, monument entry and gratuities are included only where explicitly listed above.\n' +
+  '4. Prices are subject to change if government taxes, transport fares or permit fees change.\n' +
+  '5. Lalitpur Holidays is not liable for delays or disruptions caused by weather, strikes or natural events.';
+
+const SAMPLE_ITEMS = [
+  { desc: 'Pokhara 3N/4D Package — twin sharing (hotel + daily breakfast)', unit: 'person', qty: 2, price: 18500 },
+  { desc: 'Airport transfer — Tribhuvan Intl. Airport to hotel (private car)', unit: 'vehicle', qty: 1, price: 2500 },
+];
+
+/* seeded tour package catalog (user-editable; stored in localStorage) */
+const DEFAULT_PACKAGES = [
+  { id: 'pkg-um', name: 'Upper Mustang Trek', duration: '4 Nights / 5 Days', price: 15500, coupleExtra: 1500, dates: '2026-10-15, 2026-10-29, 2026-11-12' },
+  { id: 'pkg-mk', name: 'Muktinath Darshan Tour', duration: '3 Nights / 4 Days', price: 12500, coupleExtra: 1200, dates: '2026-10-10, 2026-10-24' },
+  { id: 'pkg-pk', name: 'Pokhara Highlights', duration: '2 Nights / 3 Days', price: 8500, coupleExtra: 1000, dates: '2026-10-08, 2026-10-22, 2026-11-05' },
+  { id: 'pkg-ch', name: 'Chitwan Jungle Safari', duration: '2 Nights / 3 Days', price: 11000, coupleExtra: 1200, dates: '2026-10-12, 2026-10-26' },
+  { id: 'pkg-ev', name: 'Everest View Trek', duration: '5 Nights / 6 Days', price: 24000, coupleExtra: 2000, dates: '2026-10-18, 2026-11-01' },
+  { id: 'pkg-kt', name: 'Kathmandu Heritage Walk', duration: '1 Night / 2 Days', price: 6500, coupleExtra: 800, dates: '2026-10-09, 2026-10-23' },
+];
+
+/* ============================================================
+   2. STATE
+   ============================================================ */
+let state;          // the invoice currently being edited
+let dirty = false;  // unsaved changes?
+
+const $ = id => document.getElementById(id);
+const clone = o => JSON.parse(JSON.stringify(o));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+function blankItem() { return { desc: '', unit: 'person', qty: 1, price: 0 }; }
+
+/** Create a fresh invoice, reusing the saved company profile. */
+function newInvoiceState(withSamples) {
+  const company = loadCompany();
+  const invoices = loadInvoices();
+  return {
+    id: uid(),
+    number: nextInvoiceNumber(invoices),
+    date: todayISO(),
+    dueDate: plusDaysISO(todayISO(), 14),
+    statusMode: 'auto',
+    currency: 'NPR',
+    company: clone(company),
+    customer: { name: '', phone: '', email: '', address: '', nationality: '' },
+    trip: { package: '', start: '', end: '', adults: '', children: '', childPolicy: 'half' },
+    items: withSamples ? clone(SAMPLE_ITEMS) : [blankItem()],
+    opts: {
+      discountType: 'flat', discountValue: 0,
+      vatEnabled: true, vatRate: 13,
+      serviceEnabled: false, serviceRate: 10,
+      paid: 0,
+    },
+    notes: DEFAULT_NOTES,
+    terms: DEFAULT_TERMS,
+    savedAt: null,
+  };
+}
+
+/** Fill any missing fields in a stored invoice (forward compatibility). */
+function normalizeInvoice(inv) {
+  const shell = newInvoiceState(false);
+  const trip = { ...shell.trip, ...(inv.trip || {}) };
+  if ((trip.adults === '' || trip.adults == null) && trip.travelers != null) {
+    trip.adults = trip.travelers;   // migrate old single-field pax
+    delete trip.travelers;
+  }
+  return {
+    ...shell, ...inv,
+    company:   { ...DEFAULT_COMPANY, ...(inv.company || {}) },
+    customer:  { ...shell.customer,  ...(inv.customer || {}) },
+    trip,
+    opts:      { ...shell.opts,      ...(inv.opts || {}) },
+    items:     Array.isArray(inv.items) && inv.items.length ? inv.items.map(it => ({ unit: 'person', ...it })) : [blankItem()],
+  };
+}
+
+/* ============================================================
+   3. UTILITIES — dates, numbers, formatting, words
+   ============================================================ */
+const parseNum = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
+const round2 = v => Math.round((v + Number.EPSILON) * 100) / 100;
+
+// Local-calendar ISO dates (never toISOString(): it shifts a day in UTC+ zones like Nepal)
+function toISO(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function todayISO() { return toISO(new Date()); }
+function plusDaysISO(iso, days) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return toISO(new Date(y, m - 1, d + days));
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+const fmtQty = q => { const n = parseNum(q); return Number.isInteger(n) ? String(n) : String(round2(n)); };
+
+/** Group an integer string: South Asian (1,25,000) or Western (125,000). */
+function groupInt(intStr, southAsian) {
+  const neg = intStr.startsWith('-');
+  if (neg) intStr = intStr.slice(1);
+  let out;
+  if (!southAsian || intStr.length <= 3) {
+    out = intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  } else {
+    const last3 = intStr.slice(-3);
+    let rest = intStr.slice(0, -3);
+    const groups = [];
+    while (rest.length > 2) { groups.unshift(rest.slice(-2)); rest = rest.slice(0, -2); }
+    if (rest) groups.unshift(rest);
+    out = groups.join(',') + ',' + last3;
+  }
+  return (neg ? '-' : '') + out;
+}
+
+/** Format a money value in the given currency (defaults to current state's). */
+function formatMoney(v, currencyKey) {
+  const cur = CURRENCIES[currencyKey || state.currency] || CURRENCIES.NPR;
+  const n = round2(parseNum(v));
+  const [i, f] = Math.abs(n).toFixed(2).split('.');
+  return (n < 0 ? '-' : '') + cur.symbol + ' ' + groupInt(i, cur.southAsian) + '.' + f;
+}
+
+/* --- number to words (Indian system for NPR/INR, international otherwise) --- */
+const ONES = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten',
+  'Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+const TENS = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+
+function twoDigits(n) { return n < 20 ? ONES[n] : TENS[Math.floor(n / 10)] + (n % 10 ? ' ' + ONES[n % 10] : ''); }
+function threeDigits(n) {
+  const h = Math.floor(n / 100), r = n % 100;
+  let s = '';
+  if (h) s += ONES[h] + ' Hundred';
+  if (r) s += (h ? ' ' : '') + twoDigits(r);
+  return s;
+}
+function indianWords(n) {   // crore / lakh / thousand — e.g. 125000 → "One Lakh Twenty Five Thousand"
+  if (n === 0) return 'Zero';
+  const parts = [];
+  const cr = Math.floor(n / 1e7); n %= 1e7;
+  const lk = Math.floor(n / 1e5); n %= 1e5;
+  const th = Math.floor(n / 1e3); n %= 1e3;
+  if (cr) parts.push(indianWords(cr) + ' Crore');
+  if (lk) parts.push(twoDigits(lk) + ' Lakh');
+  if (th) parts.push(twoDigits(th) + ' Thousand');
+  if (n) parts.push(threeDigits(n));
+  return parts.join(' ');
+}
+function intlWords(n) {     // billion / million / thousand
+  if (n === 0) return 'Zero';
+  const parts = [];
+  const b = Math.floor(n / 1e9); n %= 1e9;
+  const m = Math.floor(n / 1e6); n %= 1e6;
+  const th = Math.floor(n / 1e3); n %= 1e3;
+  if (b) parts.push(intlWords(b) + ' Billion');
+  if (m) parts.push(threeDigits(m) + ' Million');
+  if (th) parts.push(threeDigits(th) + ' Thousand');
+  if (n) parts.push(threeDigits(n));
+  return parts.join(' ');
+}
+/** e.g. 25000 NPR → "Twenty Five Thousand Rupees Only" */
+function amountInWords(v, currencyKey) {
+  const key = currencyKey || state.currency;
+  const meta = WORDS[key] || WORDS.NPR;
+  const n = round2(parseNum(v));
+  const whole = Math.floor(Math.abs(n));
+  const minorUnits = Math.round((Math.abs(n) - whole) * 100);
+  const f = meta.indian ? indianWords : intlWords;
+  let s = f(whole) + ' ' + meta.major;
+  if (minorUnits) s += ' and ' + f(minorUnits) + ' ' + meta.minor;
+  return (n < 0 ? 'Minus ' : '') + s + ' Only';
+}
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ============================================================
+   4. CALCULATIONS — the single source of truth for money
+   ============================================================
+   Works on any invoice-like object so history rows can reuse it. */
+function computeTotals(inv) {
+  const o = inv.opts;
+  const subtotal = round2(inv.items.reduce(
+    (s, it) => s + parseNum(it.qty) * parseNum(it.price), 0));
+
+  let discount = o.discountType === 'percent'
+    ? subtotal * (parseNum(o.discountValue) / 100)
+    : parseNum(o.discountValue);
+  discount = round2(Math.min(Math.max(discount, 0), subtotal));   // clamp to 0..subtotal
+
+  const taxable = round2(subtotal - discount);
+  const vat     = o.vatEnabled     ? round2(taxable * parseNum(o.vatRate) / 100) : 0;
+  const service = o.serviceEnabled ? round2(taxable * parseNum(o.serviceRate) / 100) : 0;
+
+  const grandTotal = round2(taxable + vat + service);
+  const paid    = round2(Math.max(parseNum(o.paid), 0));
+  const balance = round2(grandTotal - paid);
+  return { subtotal, discount, taxable, vat, service, grandTotal, paid, balance };
+}
+
+/** Auto status from payment progress; manual modes win. */
+function effectiveStatus(inv, t) {
+  if (inv.statusMode && inv.statusMode !== 'auto') return inv.statusMode;
+  if (t.grandTotal <= 0) return 'Draft';
+  if (t.paid >= t.grandTotal - 0.005) return 'Paid';
+  if (t.paid > 0) return 'Partially Paid';
+  return 'Unpaid';
+}
+
+/** LH-YYYY-NNNN, one greater than the highest stored number this year. */
+function nextInvoiceNumber(invoices) {
+  const year = new Date().getFullYear();
+  let max = 0;
+  invoices.forEach(inv => {
+    const m = /(\d{4})-(\d+)$/.exec(String(inv.number || ''));
+    if (m && +m[1] === year) max = Math.max(max, +m[2]);
+  });
+  return 'LH-' + year + '-' + String(max + 1).padStart(4, '0');
+}
+
+/* ============================================================
+   5. RENDERING — preview & form sync
+   ============================================================ */
+function renderPreview() {
+  const t = computeTotals(state);
+  const st = effectiveStatus(state, t);
+  const c = state.company;
+  const cur = CURRENCIES[state.currency] || CURRENCIES.NPR;
+
+  /* company contact block */
+  const contact = [
+    c.address, c.phone, c.email, c.website,
+    c.pan ? 'PAN/VAT: ' + c.pan : '',
+  ].filter(Boolean).map(esc).join('<br>');
+
+  /* bill-to block */
+  const cust = state.customer;
+  const custLines = [
+    cust.phone, cust.email, cust.address,
+    cust.nationality ? 'Nationality: ' + cust.nationality : '',
+  ].filter(Boolean).map(esc).join('<br>');
+
+  /* trip block (dates + pax + child policy) */
+  const trip = state.trip;
+  const CHILD_RATES = { full: 'full price', half: 'half price', free: 'free' };
+  const CHILD_NOTES = {
+    full:  'Children below 7 are charged full price when they occupy a full seat/bed.',
+    half:  'Children below 7: 50% when sharing; full charge if a full seat/bed is taken.',
+    free:  'Children below 7: free when sharing; full charge if a full seat/bed is taken.',
+  };
+  const policy = CHILD_RATES[trip.childPolicy] ? trip.childPolicy : 'half';
+  const adultsN  = trip.adults  !== '' && trip.adults  != null ? parseNum(trip.adults)  : parseNum(trip.travelers);
+  const childrenN = parseNum(trip.children);
+  const hasTrip = trip.package || trip.start || trip.end || adultsN > 0 || childrenN > 0;
+  let tripHtml = '<div class="inv-trip-empty">No trip details / travel dates</div>';
+  if (hasTrip) {
+    const dates = trip.start || trip.end
+      ? '<div>📅 ' + fmtDate(trip.start) + ' – ' + fmtDate(trip.end) + '</div>' : '';
+    const paxParts = [];
+    if (adultsN > 0) paxParts.push(fmtQty(adultsN) + ' Adult' + (adultsN === 1 ? '' : 's'));
+    if (childrenN > 0) paxParts.push(fmtQty(childrenN) + ' Child below 7 (' + CHILD_RATES[policy] + ')');
+    const pax = paxParts.length ? '<div>👥 ' + paxParts.join(' + ') + '</div>' : '';
+    const note = childrenN > 0 ? '<div class="child-note">ℹ ' + esc(CHILD_NOTES[policy]) + '</div>' : '';
+    tripHtml = '<div class="inv-trip"><div class="pkg">' + esc(trip.package || 'Trip') + '</div>' +
+      '<div class="sub">' + dates + pax + note + '</div></div>';
+  }
+
+  /* line items (qty unit: people for packages, vehicles/rooms/days/flat otherwise) */
+  const rowsHtml = state.items.length
+    ? state.items.map((it, i) => {
+        const u = UNITS[it.unit] || UNITS.person;
+        return '<tr><td class="num">' + (i + 1) + '</td>' +
+        '<td>' + (esc(it.desc) || '<em style="color:var(--muted)">—</em>') + '</td>' +
+        '<td class="num">' + esc(fmtQty(it.qty)) +
+          (u.plural ? '<span class="unit-tag">' + u.plural + '</span>' : '') + '</td>' +
+        '<td class="num">' + formatMoney(it.price) + '</td>' +
+        '<td class="num">' + formatMoney(round2(parseNum(it.qty) * parseNum(it.price))) + '</td></tr>';
+      }).join('')
+    : '<tr class="empty-row"><td colspan="5">No items yet — add line items in the form.</td></tr>';
+
+  /* totals rows */
+  const totalsRows = [];
+  totalsRows.push('<tr><td>Subtotal</td><td>' + formatMoney(t.subtotal) + '</td></tr>');
+  if (t.discount > 0) {
+    const lbl = state.opts.discountType === 'percent'
+      ? 'Discount (' + fmtQty(state.opts.discountValue) + '%)' : 'Discount';
+    totalsRows.push('<tr><td>' + lbl + '</td><td>− ' + formatMoney(t.discount) + '</td></tr>');
+  }
+  if (state.opts.vatEnabled)
+    totalsRows.push('<tr><td>VAT (' + fmtQty(state.opts.vatRate) + '%)</td><td>' + formatMoney(t.vat) + '</td></tr>');
+  if (state.opts.serviceEnabled)
+    totalsRows.push('<tr><td>Service charge (' + fmtQty(state.opts.serviceRate) + '%)</td><td>' + formatMoney(t.service) + '</td></tr>');
+  totalsRows.push('<tr class="grand"><td>Grand Total</td><td>' + formatMoney(t.grandTotal) + '</td></tr>');
+  totalsRows.push('<tr><td>Advance / Paid</td><td>' + formatMoney(t.paid) + '</td></tr>');
+  totalsRows.push('<tr class="' + (st === 'Paid' ? 'settled' : 'balance') + '">' +
+    '<td>Balance Due</td><td>' + formatMoney(t.balance) + '</td></tr>');
+
+  const dueBoxLabel = st === 'Paid' ? 'Amount Paid' : 'Balance Due';
+  const dueBoxVal = st === 'Paid' ? t.grandTotal : t.balance;
+
+  /* logo (size customizable in Settings) */
+  const logoSize = Math.round(Math.min(Math.max(parseNum(c.logoSize) || 58, 32), 200));
+  const logoStyle = 'width:' + logoSize + 'px;height:' + logoSize + 'px' +
+    (c.logoData ? '' : ';font-size:' + Math.round(logoSize * 0.36) + 'px');
+
+  $('paper').innerHTML =
+    '<div class="inv-top">' +
+      '<div class="inv-brand">' +
+        '<div class="inv-logo" style="' + logoStyle + '">' + (c.logoData ? '<img src="' + c.logoData + '" alt="Logo">' : 'LH') + '</div>' +
+        '<div><h2>' + esc(c.name || 'Lalitpur Holidays') + '</h2>' +
+        '<div class="tagline">Tours · Treks · Travel</div>' +
+        '<div class="inv-company-details">' + contact + '</div></div>' +
+      '</div>' +
+      '<div class="inv-meta">' +
+        '<div class="inv-title">Invoice</div>' +
+        '<div class="inv-meta-rows">' +
+          '<div class="row"><span>Invoice No.</span><strong>' + esc(state.number) + '</strong></div>' +
+          '<div class="row"><span>Invoice Date</span><strong>' + fmtDate(state.date) + '</strong></div>' +
+          '<div class="row"><span>Due Date</span><strong>' + fmtDate(state.dueDate) + '</strong></div>' +
+        '</div>' +
+        '<span class="badge ' + (STATUS_CLASS[st] || 'st-draft') + '">' + st + '</span>' +
+        '<div class="inv-due' + (st === 'Paid' ? ' paid' : '') + '">' + dueBoxLabel +
+          '<strong>' + formatMoney(dueBoxVal) + '</strong></div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="inv-billtrip">' +
+      '<div class="inv-billto"><h3>Bill To</h3>' +
+        '<div class="name">' + (esc(cust.name) || '—') + '</div>' +
+        '<div class="sub">' + (custLines || '') + '</div></div>' +
+      '<div><h3>Trip Details</h3>' + tripHtml + '</div>' +
+    '</div>' +
+
+    '<table class="inv-items">' +
+      '<thead><tr><th class="num">#</th><th>Description</th><th class="num">Qty</th>' +
+      '<th class="num">Unit Price</th><th class="num">Amount</th></tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody>' +
+    '</table>' +
+
+    '<div class="inv-bottom">' +
+      '<div class="inv-words"><h4>Amount in Words</h4>' +
+        '<div class="box">' + esc(amountInWords(t.grandTotal)) + '</div></div>' +
+      '<div class="totals-wrap">' +
+        '<table class="inv-totals">' + totalsRows.join('') + '</table>' +
+        (st === 'Paid' ? '<div class="stamp">PAID</div>' : '') +
+      '</div>' +
+    '</div>' +
+
+    '<div class="inv-pay">' +
+      '<div class="pay-details"><h4>Payment Information</h4>' +
+        (c.bankName ? '<div><b>Bank:</b> ' + esc(c.bankName) + '</div>' : '') +
+        (c.bankAccountName ? '<div><b>Account name:</b> ' + esc(c.bankAccountName) + '</div>' : '') +
+        (c.bankAccountNumber ? '<div><b>Account no.:</b> ' + esc(c.bankAccountNumber) + '</div>' : '') +
+        (c.payNote ? '<div>' + esc(c.payNote) + '</div>' : '') +
+      '</div>' +
+      '<div class="inv-qr">' + (c.qrData
+        ? '<img src="' + c.qrData + '" alt="Payment QR code">'
+        : 'eSewa · Khalti · FonePay<br>QR placeholder<br>(upload in form)') + '</div>' +
+    '</div>' +
+
+    '<div class="inv-notes">' +
+      '<div><h4>Notes</h4><p>' + (esc(state.notes) || '—') + '</p></div>' +
+      '<div><h4>Terms &amp; Conditions</h4><p>' + (esc(state.terms) || '—') + '</p></div>' +
+    '</div>' +
+
+    '<div class="inv-sign"><div class="block"><div class="line"></div>' +
+      '<div class="who">Authorized Signatory</div><div class="co">' + esc(c.name || 'Lalitpur Holidays') + '</div></div></div>' +
+
+    '<div class="inv-footer"><div class="bar"></div>' +
+      '<div class="txt"><span>' + esc(c.name || 'Lalitpur Holidays') + ' · Lalitpur, Nepal</span>' +
+      '<span>This invoice was generated on ' + fmtDate(todayISO()) + '.</span></div></div>';
+
+  syncFormComputed(t);
+}
+
+/** Update computed bits of the FORM (row totals) without rebuilding inputs. */
+function syncFormComputed(t) {
+  state.items.forEach((it, i) => {
+    const cell = $('rowTotal-' + i);
+    if (cell) cell.textContent = formatMoney(round2(parseNum(it.qty) * parseNum(it.price)));
+  });
+}
+
+/** Rebuild the editable line-item rows (add / remove / open invoice). */
+function renderItemsForm() {
+  $('itemsRows').innerHTML = state.items.map((it, i) =>
+    '<div class="item-row">' +
+      '<input class="desc-cell" type="text" data-bind="items.' + i + '.desc" value="' + esc(it.desc) + '" placeholder="e.g. Tour package, hotel, vehicle rent…" aria-label="Item ' + (i + 1) + ' description">' +
+      '<button type="button" class="row-del" data-del="' + i + '" aria-label="Remove item ' + (i + 1) + '" title="Remove">×</button>' +
+      '<select data-bind="items.' + i + '.unit" aria-label="Item ' + (i + 1) + ' unit">' + unitOptions(it.unit) + '</select>' +
+      '<input type="number" data-bind="items.' + i + '.qty" data-type="number" min="0" step="any" value="' + esc(it.qty) + '" aria-label="Item ' + (i + 1) + ' quantity">' +
+      '<input type="number" data-bind="items.' + i + '.price" data-type="number" min="0" step="any" value="' + esc(it.price) + '" aria-label="Item ' + (i + 1) + ' unit price">' +
+      '<span class="row-total" id="rowTotal-' + i + '"></span>' +
+    '</div>').join('');
+}
+
+/** Push the whole state back into every form control. */
+function fillForm() {
+  const c = state.company, o = state.opts;
+  $('cName').value = c.name;             $('cAddress').value = c.address;
+  $('cPhone').value = c.phone;           $('cEmail').value = c.email;
+  $('cWebsite').value = c.website;       $('cPan').value = c.pan;
+  $('invNumber').value = state.number;   $('invDate').value = state.date;
+  $('dueDate').value = state.dueDate;    $('currencySel').value = state.currency;
+  $('statusMode').value = state.statusMode;
+  $('custName').value = state.customer.name;
+  $('custPhone').value = state.customer.phone;
+  $('custEmail').value = state.customer.email;
+  $('custAddress').value = state.customer.address;
+  $('custNationality').value = state.customer.nationality;
+  $('tripPackage').value = state.trip.package;
+  $('tripStart').value = state.trip.start;
+  $('tripEnd').value = state.trip.end;
+  $('tripAdults').value = state.trip.adults;
+  $('tripChildren').value = state.trip.children;
+  $('childPolicy').value = state.trip.childPolicy || 'half';
+  $('logoSize').value = c.logoSize || 58;
+  $('discountType').value = o.discountType;
+  $('discountValue').value = o.discountValue;
+  $('vatEnabled').checked = o.vatEnabled;
+  $('vatRate').value = o.vatRate;
+  $('vatRate').disabled = !o.vatEnabled;
+  $('serviceEnabled').checked = o.serviceEnabled;
+  $('serviceRate').value = o.serviceRate;
+  $('serviceRate').disabled = !o.serviceEnabled;
+  $('paidAmount').value = o.paid;
+  $('payBank').value = c.bankName;
+  $('payAccountName').value = c.bankAccountName;
+  $('payAccountNumber').value = c.bankAccountNumber;
+  $('payNote').value = c.payNote;
+  $('notesText').value = state.notes;
+  $('termsText').value = state.terms;
+  clearNameError();
+  updateThumbs();
+  updateSuffixes();
+  renderItemsForm();
+}
+
+function updateThumbs() {
+  const logoSet = !!state.company.logoData;
+  $('logoThumbWrap').classList.toggle('show', logoSet);
+  if (logoSet) $('logoThumb').src = state.company.logoData;
+  $('btnLogoRemove').hidden = !logoSet;
+  const qrSet = !!state.company.qrData;
+  $('qrThumbWrap').classList.toggle('show', qrSet);
+  if (qrSet) $('qrThumb').src = state.company.qrData;
+  $('btnQrRemove').hidden = !qrSet;
+}
+
+function updateSuffixes() {
+  const sym = (CURRENCIES[state.currency] || CURRENCIES.NPR).symbol;
+  $('discountSuffix').textContent = state.opts.discountType === 'percent' ? '%' : sym;
+  $('paidSuffix').textContent = sym;
+}
+
+/* ============================================================
+   6. STORAGE — localStorage (invoices + company profile)
+   ============================================================ */
+function loadInvoices() {
+  try { return JSON.parse(localStorage.getItem(LS_INVOICES)) || []; }
+  catch { return []; }
+}
+function saveInvoices(list) {
+  try { localStorage.setItem(LS_INVOICES, JSON.stringify(list)); }
+  catch { toast('Could not save — browser storage is full or blocked.'); }
+}
+function loadCompany() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_COMPANY));
+    if (saved && typeof saved === 'object') return { ...DEFAULT_COMPANY, ...saved };
+  } catch {}
+  return clone(DEFAULT_COMPANY);
+}
+function saveCompany(company) {
+  try { localStorage.setItem(LS_COMPANY, JSON.stringify(company)); } catch {}
+}
+let companyTimer;
+function queueCompanySave() {   // debounce: company fields auto-persist as you type
+  clearTimeout(companyTimer);
+  companyTimer = setTimeout(() => { saveCompany(state.company); cloudPushCompany(); }, 400);
+}
+
+/* ============================================================
+   7. SAVE / HISTORY / DUPLICATE / DELETE
+   ============================================================ */
+function saveCurrentInvoice() {
+  if (!validate()) return;
+  state.savedAt = new Date().toISOString();
+  state.updatedAt = state.savedAt;
+  const list = loadInvoices();
+  const i = list.findIndex(inv => inv.id === state.id);
+  if (i >= 0) list[i] = clone(state); else list.push(clone(state));
+  saveInvoices(list);
+  dirty = false;
+  updateHistoryCount();
+  cloudPushInvoice(state);
+  if ($('historyModal').classList.contains('open')) renderHistory();
+  toast('Invoice ' + state.number + ' saved.');
+}
+
+function validate() {
+  const name = state.customer.name.trim();
+  if (!name) {
+    $('custName').classList.add('invalid');
+    $('custNameError').classList.add('show');
+    $('custName').focus();
+    return false;
+  }
+  return true;
+}
+function clearNameError() {
+  $('custName').classList.remove('invalid');
+  $('custNameError').classList.remove('show');
+}
+
+function updateHistoryCount() {
+  $('historyCount').textContent = loadInvoices().length;
+}
+
+function renderHistory() {
+  const q = $('historySearch').value.trim().toLowerCase();
+  const list = loadInvoices()
+    .slice()
+    .sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''))
+    .filter(inv => {
+      if (!q) return true;
+      const st = effectiveStatus(inv, computeTotals(inv));
+      return [inv.number, inv.customer && inv.customer.name, inv.trip && inv.trip.package, st]
+        .some(x => String(x || '').toLowerCase().includes(q));
+    });
+
+  $('historyList').innerHTML = list.length ? list.map(inv => {
+    const t = computeTotals(inv);
+    const st = effectiveStatus(inv, t);
+    return '<div class="hist-row" data-id="' + inv.id + '">' +
+      '<span class="num">' + esc(inv.number) + '</span>' +
+      '<span>' + fmtDate(inv.date) + '</span>' +
+      '<span class="cust"><b>' + esc(inv.customer.name || '—') + '</b>' +
+        (inv.trip && (inv.trip.package || inv.trip.start)
+          ? '<small>' + [inv.trip.package,
+              inv.trip.start ? fmtDate(inv.trip.start) + ' – ' + fmtDate(inv.trip.end) : '']
+              .filter(Boolean).map(esc).join(' · ') + '</small>'
+          : '') + '</span>' +
+      '<span class="amt">' + formatMoney(t.grandTotal, inv.currency) + '</span>' +
+      '<span><span class="badge ' + (STATUS_CLASS[st] || 'st-draft') + '">' + st + '</span></span>' +
+      '<span class="hist-actions">' +
+        '<button type="button" class="mini-btn" data-act="open">Open</button>' +
+        '<button type="button" class="mini-btn" data-act="dup">Duplicate</button>' +
+        '<button type="button" class="mini-btn danger" data-act="del">Delete</button>' +
+      '</span></div>';
+  }).join('') : '<div class="hist-empty">' + (q ? 'No invoices match your search.' : 'No saved invoices yet — click Save to store one.') + '</div>';
+}
+
+function openHistory() {
+  renderHistory();
+  $('historyModal').classList.add('open');
+  $('historySearch').focus();
+}
+function closeHistory() { $('historyModal').classList.remove('open'); }
+
+function handleHistoryAction(id, act) {
+  const list = loadInvoices();
+  const inv = list.find(x => x.id === id);
+  if (!inv) return;
+  if (act === 'open') {
+    state = normalizeInvoice(inv);
+    dirty = false;
+    fillForm(); renderPreview();
+    closeHistory();
+    toast('Opened ' + state.number + '.');
+  } else if (act === 'dup') {
+    state = normalizeInvoice(clone(inv));
+    state.id = uid();
+    state.number = nextInvoiceNumber(list);
+    state.date = todayISO();
+    state.dueDate = plusDaysISO(todayISO(), 14);
+    state.statusMode = 'auto';
+    state.opts.paid = 0;
+    state.savedAt = null;
+    dirty = true;
+    fillForm(); renderPreview();
+    closeHistory();
+    toast('Duplicated as ' + state.number + ' — review and save.');
+  } else if (act === 'del') {
+    if (!confirm('Delete invoice ' + inv.number + '? This cannot be undone.')) return;
+    saveInvoices(list.filter(x => x.id !== id));
+    recordLocalDelete(id);          // tombstone: deletion propagates to all devices
+    cloudDeleteInvoice(id);
+    updateHistoryCount();
+    renderHistory();
+    toast('Invoice ' + inv.number + ' deleted.');
+  }
+}
+
+/* ============================================================
+   7b. TOUR PACKAGE CATALOG
+   ============================================================ */
+function loadPackages() {
+  try {
+    const p = JSON.parse(localStorage.getItem(LS_PACKAGES));
+    if (Array.isArray(p)) return p;
+  } catch {}
+  return clone(DEFAULT_PACKAGES);
+}
+function savePackages(list) {
+  try { localStorage.setItem(LS_PACKAGES, JSON.stringify(list)); } catch {}
+}
+
+function renderPackages() {
+  const list = loadPackages();
+  $('packagesList').innerHTML = list.length ? list.map(p => {
+    const dates = String(p.dates || '').split(',').map(s => s.trim()).filter(Boolean)
+      .map(d => '<span class="pkg-date">' + esc(/^\d{4}-\d{2}-\d{2}$/.test(d) ? fmtDate(d) : d) + '</span>')
+      .join('');
+    const hasCouple = parseNum(p.coupleExtra) > 0;
+    const couplePP = round2(parseNum(p.price) + parseNum(p.coupleExtra));
+    return '<div class="pkg-card">' +
+      '<span class="pkg-dur">' + esc(p.duration || '—') + '</span>' +
+      '<h3>' + esc(p.name) + '</h3>' +
+      '<div class="pkg-price">' + formatMoney(p.price) +
+        ' <small>/ person · twin sharing</small></div>' +
+      (hasCouple
+        ? '<div class="pkg-extra">Couple / private room: +' + formatMoney(p.coupleExtra) + ' per person</div>'
+        : '') +
+      (dates ? '<div class="pkg-dates">' + dates + '</div>' : '') +
+      (hasCouple
+        ? '<select class="pkg-occ" data-occ="' + p.id + '" aria-label="Occupancy — ' + esc(p.name) + '">' +
+          '<option value="sharing">Twin sharing — ' + formatMoney(p.price) + ' pp</option>' +
+          '<option value="couple">Couple / private room — ' + formatMoney(couplePP) + ' pp</option>' +
+          '</select>'
+        : '') +
+      '<div class="pkg-actions">' +
+        '<button type="button" class="mini-btn add" data-pkg="' + p.id + '" data-act="add">+ Add to invoice</button>' +
+        '<button type="button" class="mini-btn" data-pkg="' + p.id + '" data-act="edit">Edit</button>' +
+        '<button type="button" class="mini-btn danger" data-pkg="' + p.id + '" data-act="del">Delete</button>' +
+      '</div></div>';
+  }).join('') : '<div class="hist-empty">No packages yet — click “+ New Package”.</div>';
+}
+
+function openPkgEditor(pkg) {
+  $('pkgEditorTitle').textContent = pkg ? 'Edit Package' : 'New Package';
+  $('pkgEditId').value = pkg ? pkg.id : '';
+  $('pkgName').value = pkg ? pkg.name : '';
+  $('pkgDuration').value = pkg ? pkg.duration : '';
+  $('pkgPrice').value = pkg ? pkg.price : '';
+  $('pkgCouple').value = pkg ? (pkg.coupleExtra || 0) : 0;
+  $('pkgDates').value = pkg ? pkg.dates : '';
+  $('pkgEditor').classList.add('open');
+  $('pkgName').focus();
+}
+
+function savePkgEditor() {
+  const name = $('pkgName').value.trim();
+  if (!name) { $('pkgName').focus(); toast('Package name is required.'); return; }
+  const list = loadPackages();
+  const rec = {
+    id: $('pkgEditId').value || 'pkg-' + uid(),
+    name,
+    duration: $('pkgDuration').value.trim(),
+    price: Math.max(parseNum($('pkgPrice').value), 0),
+    coupleExtra: Math.max(parseNum($('pkgCouple').value), 0),
+    dates: $('pkgDates').value.trim(),
+  };
+  const i = list.findIndex(p => p.id === rec.id);
+  if (i >= 0) list[i] = rec; else list.push(rec);
+  savePackages(list);
+  cloudPushPackages();
+  $('pkgEditor').classList.remove('open');
+  renderPackages();
+  toast('Package saved.');
+}
+
+function closePackages() { $('packagesModal').classList.remove('open'); }
+
+/** Add a package as a per-person line item; qty defaults to travelers on the trip.
+    occupancy: 'sharing' (default) or 'couple' — adds the per-person couple extra. */
+function addPackageToInvoice(pkg, occupancy) {
+  const couple = occupancy === 'couple' && parseNum(pkg.coupleExtra) > 0;
+  const perPerson = round2(parseNum(pkg.price) + (couple ? parseNum(pkg.coupleExtra) : 0));
+  const pax = (parseNum(state.trip.adults) || 0) + (parseNum(state.trip.children) || 0);
+  state.items.push({
+    desc: pkg.name + (pkg.duration ? ' — ' + pkg.duration : '') +
+      (couple ? ' (couple / private room)' : ' (twin sharing)'),
+    unit: 'person',
+    qty: pax > 0 ? pax : 1,
+    price: perPerson,
+  });
+  if (!state.trip.package) state.trip.package = pkg.name;
+  const firstDate = String(pkg.dates || '').split(',').map(s => s.trim())
+    .find(d => /^\d{4}-\d{2}-\d{2}$/.test(d));
+  if (!state.trip.start && firstDate) state.trip.start = firstDate;
+  dirty = true;
+  fillForm(); renderPreview();
+  closePackages();
+  toast('Added “' + pkg.name + '”' + (couple ? ' (couple / private)' : '') +
+    ' — ' + (pax > 0 ? pax : 1) + ' × ' + formatMoney(perPerson) + '.');
+}
+
+/* ============================================================
+   8. EXPORT PNG / JSON BACKUP
+   ============================================================ */
+/* PNG export uses no libraries: the invoice markup is cloned into an
+   SVG <foreignObject> with the app stylesheet inlined, rasterized onto a
+   canvas at 2× scale and downloaded. Rendered at a fixed A4 width (794px
+   @ 96dpi) so the image is identical whatever the current window size. */
+const PNG_WIDTH = 794;   // A4 @ 96dpi
+
+async function renderInvoiceCanvas(scale) {
+  const paper = $('paper');
+
+  // 1) measure the paper at the fixed width (offscreen clone)
+  const measurer = paper.cloneNode(true);
+  measurer.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + PNG_WIDTH +
+    'px;max-width:none;margin:0;box-shadow:none;border:none';
+  document.body.appendChild(measurer);
+  const H = Math.ceil(measurer.offsetHeight);
+  measurer.remove();
+  if (!H) throw new Error('empty render');
+
+  // 2) build a self-contained SVG document (markup + full stylesheet)
+  const appCss = document.querySelector('style').textContent;
+  const css = appCss.replace(':root{', ':root,.png-wrap{') +
+    '\n.png-wrap{font-family:var(--font);font-size:14px;line-height:1.5;color:var(--ink);' +
+    'width:' + PNG_WIDTH + 'px;background:#fff}' +
+    '\n.png-wrap .invoice-paper{width:' + PNG_WIDTH + 'px;max-width:none;margin:0;' +
+    'box-shadow:none;border:none}';
+  const styleEl = document.createElement('style');
+  styleEl.textContent = css;
+  const wrap = document.createElement('div');
+  wrap.className = 'png-wrap';
+  wrap.appendChild(styleEl);
+  wrap.appendChild(paper.cloneNode(true));
+  const xml = new XMLSerializer().serializeToString(wrap);   // well-formed XHTML
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + PNG_WIDTH + '" height="' + H + '">' +
+    '<foreignObject x="0" y="0" width="' + PNG_WIDTH + '" height="' + H + '">' + xml + '</foreignObject></svg>';
+
+  // 3) rasterize (data URI → img → canvas).
+  //    A data: URI is required: a blob: URL SVG taints the canvas in Chromium.
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  const img = new Image();
+  await new Promise((res, rej) => {
+    img.onload = res;
+    img.onerror = () => rej(new Error('svg render failed'));
+    img.src = url;
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = PNG_WIDTH * scale;
+  canvas.height = H * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.drawImage(img, 0, 0, PNG_WIDTH, H);
+  return canvas;
+}
+
+async function exportPNG() {
+  try {
+    const canvas = await renderInvoiceCanvas(2);
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+    if (!blob) throw new Error('encode failed');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (state.number || 'invoice').replace(/[^\w.-]+/g, '_') + '.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast('PNG downloaded (' + canvas.width + '×' + canvas.height + ' px).');
+  } catch {
+    toast('PNG export failed in this browser — use Print / Save PDF instead.');
+  }
+}
+
+/* ---- Clean PDF export: wraps the invoice canvas (JPEG slices, one per
+   A4 page) in a hand-built PDF. No print dialog, so the browser's date /
+   title / URL header-footer lines can never appear. No libraries. ---- */
+const A4_PT_W = 595.28, A4_PT_H = 841.89;
+
+function dataUrlToBytes(dataUrl) {
+  const bin = atob(dataUrl.split(',')[1]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function isWhiteRow(ctx, w, y) {
+  const d = ctx.getImageData(0, y, w, 1).data;
+  for (let i = 0; i < d.length; i += 8) {             // sample every 2nd pixel
+    if (d[i] < 246 || d[i + 1] < 246 || d[i + 2] < 246) return false;
+  }
+  return true;
+}
+
+/* prefer cutting pages at a blank row so text is never sliced */
+function findCutRow(ctx, w, idealY, maxUp) {
+  const yMax = Math.min(idealY, ctx.canvas.height - 1);
+  const yMin = Math.max(1, idealY - maxUp);
+  for (let y = yMax; y >= yMin; y--) if (isWhiteRow(ctx, w, y)) return y;
+  return yMax;
+}
+
+async function exportPDF() {
+  try {
+    toast('Building PDF…');
+    const canvas = await renderInvoiceCanvas(2);
+    const scale = A4_PT_W / canvas.width;              // pt per px
+    const maxSlicePx = Math.floor(A4_PT_H / scale);
+    const ctx = canvas.getContext('2d');
+
+    const cuts = [0];
+    let next = maxSlicePx;
+    while (next < canvas.height - 4) {
+      const cut = findCutRow(ctx, canvas.width, next, 220);
+      cuts.push(cut);
+      next = cut + maxSlicePx;
+    }
+    const slices = [];
+    for (let i = 0; i < cuts.length; i++) {
+      const top = cuts[i];
+      const bottom = i + 1 < cuts.length ? cuts[i + 1] : canvas.height;
+      if (bottom - top > 3) slices.push({ top, h: bottom - top });
+    }
+
+    const parts = slices.map(s => {
+      const c = document.createElement('canvas');
+      c.width = canvas.width; c.height = s.h;
+      const cc = c.getContext('2d');
+      cc.fillStyle = '#fff'; cc.fillRect(0, 0, c.width, c.height);
+      cc.drawImage(canvas, 0, s.top, canvas.width, s.h, 0, 0, canvas.width, s.h);
+      return { w: canvas.width, h: s.h, bytes: dataUrlToBytes(c.toDataURL('image/jpeg', 0.92)) };
+    });
+
+    const blob = buildPdfBlob(parts);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (state.number || 'invoice').replace(/[^\w.-]+/g, '_') + '.pdf';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast('PDF downloaded (' + parts.length + ' page' + (parts.length === 1 ? '' : 's') + ') — clean, no headers or footers.');
+  } catch (e) {
+    console.error(e);
+    toast('PDF export failed in this browser — use Print instead.');
+  }
+}
+
+function buildPdfBlob(imgs) {
+  const W = A4_PT_W, H = A4_PT_H;
+  const enc = new TextEncoder();
+  const chunks = [];
+  let offset = 0;
+  const offsets = [];
+  const push = b => {
+    const u = typeof b === 'string' ? enc.encode(b) : b;
+    chunks.push(u); offset += u.length;
+  };
+  const obj = (num, body) => { offsets[num] = offset; push(num + ' 0 obj\n' + body + '\nendobj\n'); };
+
+  push('%PDF-1.4\n');
+  push(new Uint8Array([0x25, 0xE2, 0xE3, 0xCF, 0xD3, 0x0A]));   // binary marker line
+
+  const n = imgs.length;
+  obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  obj(2, '<< /Type /Pages /Count ' + n + ' /Kids [' +
+    imgs.map((_, i) => (3 + i * 3) + ' 0 R').join(' ') + '] >>');
+
+  imgs.forEach((im, i) => {
+    const pageObj = 3 + i * 3, contObj = 4 + i * 3, imgObj = 5 + i * 3;
+    const hpt = +(im.h * W / im.w).toFixed(2);
+    const y = +(H - hpt).toFixed(2);
+
+    obj(pageObj, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + W + ' ' + H + ']' +
+      ' /Resources << /XObject << /Im' + i + ' ' + imgObj + ' 0 R >>' +
+      ' /ProcSet [/PDF /ImageC] >> /Contents ' + contObj + ' 0 R >>');
+    const content = 'q\n' + W + ' 0 0 ' + hpt + ' 0 ' + y + ' cm\n/Im' + i + ' Do\nQ';
+    obj(contObj, '<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream');
+
+    offsets[imgObj] = offset;
+    push(imgObj + ' 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + im.w +
+      ' /Height ' + im.h + ' /ColorSpace /DeviceRGB /BitsPerComponent 8' +
+      ' /Filter /DCTDecode /Length ' + im.bytes.length + ' >>\nstream\n');
+    push(im.bytes);
+    push('\nendstream\nendobj\n');
+  });
+
+  const xrefPos = offset;
+  const count = 3 + 3 * n;                     // objects 1, 2, then 3 per page
+  let xref = 'xref\n0 ' + count + '\n0000000000 65535 f \n';
+  for (let i = 1; i < count; i++) {
+    xref += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
+  }
+  push(xref);
+  push('trailer\n<< /Size ' + count + ' /Root 1 0 R >>\nstartxref\n' + xrefPos + '\n%%EOF\n');
+  return new Blob(chunks, { type: 'application/pdf' });
+}
+
+function exportBackup() {
+  const data = {
+    app: 'lalitpur-holidays-invoice',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    company: loadCompany(),
+    invoices: loadInvoices(),
+    packages: loadPackages(),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'lalitpur-holidays-backup-' + todayISO() + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Backup downloaded (' + data.invoices.length + ' invoices).');
+}
+
+function importBackup(file) {
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data || !Array.isArray(data.invoices)) throw new Error('bad shape');
+      const existing = loadInvoices();
+      let added = 0, updated = 0;
+      data.invoices.forEach(raw => {
+        const inv = normalizeInvoice(raw);
+        const i = existing.findIndex(x => x.id === inv.id);
+        if (i >= 0) { existing[i] = inv; updated++; } else { existing.push(inv); added++; }
+      });
+      saveInvoices(existing);
+      if (Array.isArray(data.packages)) savePackages(data.packages);
+      if (data.company && typeof data.company === 'object') {
+        saveCompany({ ...DEFAULT_COMPANY, ...data.company });
+        state.company = { ...DEFAULT_COMPANY, ...data.company };
+        fillForm();
+      }
+      updateHistoryCount();
+      renderPreview();
+      /* signed in? push everything so the import reaches all devices */
+      if (cloudOn()) {
+        setCloudStatus('busy');
+        try {
+          const pushable = existing.filter(x => x.savedAt).map(invoiceRow);
+          if (pushable.length) {
+            const { error } = await CLOUD.client.from('invoices').upsert(pushable);
+            if (error) throw error;
+          }
+          if (Array.isArray(data.packages)) await cloudPushPackages();
+          await cloudPushCompany();
+          setCloudStatus('ok');
+        } catch (e) { console.error(e); setCloudStatus('err'); toast('Imported locally, but cloud push failed.'); }
+      }
+      toast('Imported ' + data.invoices.length + ' invoices (' + added + ' new, ' + updated + ' updated).');
+    } catch {
+      alert('That file is not a valid Lalitpur Holidays backup JSON.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ============================================================
+   10. CLOUD SYNC — Supabase (Postgres) + staff accounts
+   ============================================================
+   The app always works offline on localStorage. When config.js
+   provides Supabase credentials, a sync chip + Sign in button
+   appear in the toolbar:
+   - invoices   merge per-row, last write wins by updated_at;
+                deletions propagate via tombstones (invoice_deletions)
+   - company profile & packages are server-authoritative on pull
+   - every Save / Delete / settings change also writes through
+     to the database while signed in */
+const CLOUD = {
+  url: (window.SUPABASE_URL || '').trim(),
+  key: (window.SUPABASE_ANON_KEY || '').trim(),
+  client: null,
+  user: null,
+};
+
+function cloudReady() {
+  return !!(CLOUD.url && CLOUD.key && window.supabase && window.supabase.createClient);
+}
+function cloudOn() { return !!(cloudReady() && CLOUD.client && CLOUD.user); }
+
+function initCloud() {
+  /* re-read config in case it was provided after this script parsed */
+  CLOUD.url = ((window.SUPABASE_URL || '').trim()) || CLOUD.url;
+  CLOUD.key = ((window.SUPABASE_ANON_KEY || '').trim()) || CLOUD.key;
+  if (!cloudReady()) return;
+  try { CLOUD.client = window.supabase.createClient(CLOUD.url, CLOUD.key); }
+  catch (e) { console.error('Supabase init failed', e); return; }
+
+  CLOUD.client.auth.getSession().then(({ data }) => {
+    CLOUD.user = (data && data.session && data.session.user) || null;
+    updateAuthUI();
+    if (CLOUD.user) fullSync();
+  }).catch(() => setCloudStatus('err'));
+
+  CLOUD.client.auth.onAuthStateChange((event, session) => {
+    CLOUD.user = (session && session.user) || null;
+    updateAuthUI();
+    if (event === 'SIGNED_IN' && CLOUD.user) fullSync();
+    if (event === 'SIGNED_OUT') toast('Signed out — working locally until you sign in.');
+  });
+}
+
+function setCloudStatus(kind) {
+  const chip = $('cloudStatus');
+  if (!chip) return;
+  chip.hidden = !cloudReady();
+  if (chip.hidden) return;
+  const dot = chip.querySelector('.dot');
+  chip.classList.remove('ok', 'busy', 'err', 'off');
+  dot.className = 'dot';
+  const text = $('cloudText');
+  if (kind === 'ok') { chip.classList.add('ok'); text.textContent = 'Synced'; }
+  else if (kind === 'busy') { chip.classList.add('busy'); text.textContent = 'Syncing…'; }
+  else if (kind === 'err') { chip.classList.add('err'); text.textContent = 'Sync error'; }
+  else { chip.classList.add('off'); text.textContent = 'Offline — sign in to sync'; }
+}
+
+function updateAuthUI() {
+  const btn = $('btnAuth');
+  btn.hidden = !cloudReady();
+  if (!cloudReady()) { $('cloudStatus').hidden = true; return; }
+  $('authLabel').textContent = CLOUD.user ? CLOUD.user.email : 'Sign in';
+  setCloudStatus(CLOUD.user ? 'busy' : 'off');
+  if (CLOUD.user) setCloudStatus('busy'); // fullSync() will set ok/err
+}
+
+/* ---- row mapping between app state and Postgres ---- */
+function invoiceRow(inv) {
+  const t = computeTotals(inv);
+  return {
+    id: inv.id,
+    number: inv.number || '',
+    customer_name: (inv.customer && inv.customer.name) || '',
+    invoice_date: inv.date || null,
+    total: t.grandTotal,
+    status: effectiveStatus(inv, t),
+    currency: inv.currency || 'NPR',
+    saved_at: inv.savedAt || null,
+    data: inv,
+  };
+}
+function pkgToRow(p, i) {
+  return { id: p.id, name: p.name, duration: p.duration || '',
+    price: parseNum(p.price), couple_extra: parseNum(p.coupleExtra),
+    dates: p.dates || '', sort_order: i };
+}
+function rowToPkg(r) {
+  return { id: r.id, name: r.name, duration: r.duration || '',
+    price: Number(r.price) || 0, coupleExtra: Number(r.couple_extra) || 0,
+    dates: r.dates || '' };
+}
+
+/* ---- deletion tombstones ---- */
+function loadDeletedIds() {
+  try { return JSON.parse(localStorage.getItem(LS_DELETIONS)) || []; } catch { return []; }
+}
+function saveDeletedIds(ids) {
+  try { localStorage.setItem(LS_DELETIONS, JSON.stringify(ids)); } catch {}
+}
+function recordLocalDelete(id) {
+  const ids = loadDeletedIds();
+  if (!ids.includes(id)) { ids.push(id); saveDeletedIds(ids); }
+}
+
+/* ---- full sync: run at sign-in and on page load when signed in ---- */
+async function fullSync() {
+  if (!cloudOn()) return;
+  setCloudStatus('busy');
+  try {
+    const c = CLOUD.client;
+    const [inv, del, comp, pkg] = await Promise.all([
+      c.from('invoices').select('*'),
+      c.from('invoice_deletions').select('id'),
+      c.from('company_settings').select('*').eq('id', 1).maybeSingle(),
+      c.from('tour_packages').select('*').order('sort_order', { ascending: true }),
+    ]);
+    [inv, del, comp, pkg].forEach(r => { if (r.error) throw r.error; });
+
+    /* tombstones: merge both directions, then prune local invoices */
+    const serverDel = (del.data || []).map(r => r.id);
+    const localDel = loadDeletedIds();
+    const missing = localDel.filter(id => !serverDel.includes(id));
+    if (missing.length) {
+      const { error } = await c.from('invoice_deletions')
+        .upsert(missing.map(id => ({ id })));
+      if (error) throw error;
+    }
+    const deleted = new Set([...serverDel, ...localDel]);
+    saveDeletedIds([...deleted]);
+
+    /* invoices: per-row last-write-wins by updated_at */
+    const merged = new Map();
+    loadInvoices().forEach(i => { if (!deleted.has(i.id)) merged.set(i.id, i); });
+    (inv.data || []).forEach(r => {
+      if (deleted.has(r.id)) return;
+      const server = { ...normalizeInvoice(r.data), updatedAt: r.updated_at };
+      const cur = merged.get(r.id);
+      if (!cur || (cur.updatedAt || '') <= (server.updatedAt || '')) merged.set(r.id, server);
+    });
+    const serverById = new Map((inv.data || []).map(r => [r.id, r]));
+    const toPush = [...merged.values()].filter(i => {
+      if (!i.savedAt) return false;                    // drafts stay local until saved
+      const sr = serverById.get(i.id);
+      return !sr || (i.updatedAt || '') > (sr.updated_at || '');
+    });
+    if (toPush.length) {
+      const { error } = await c.from('invoices').upsert(toPush.map(invoiceRow));
+      if (error) throw error;
+    }
+    saveInvoices([...merged.values()]);
+
+    /* company profile: server wins once it exists; first run seeds it */
+    if (comp.data && comp.data.data) {
+      saveCompany({ ...DEFAULT_COMPANY, ...comp.data.data });
+      state.company = loadCompany();
+    } else if (!localStorage.getItem(LS_SYNC_FLAG)) {
+      const { error } = await c.from('company_settings').upsert({ id: 1, data: loadCompany() });
+      if (error) throw error;
+    }
+
+    /* packages: server wins once populated; first run seeds them */
+    if ((pkg.data || []).length) {
+      savePackages(pkg.data.map(rowToPkg));
+    } else if (!localStorage.getItem(LS_SYNC_FLAG) && loadPackages().length) {
+      const { error } = await c.from('tour_packages').upsert(loadPackages().map(pkgToRow));
+      if (error) throw error;
+    }
+    localStorage.setItem(LS_SYNC_FLAG, '1');
+
+    fillForm(); renderPreview(); updateHistoryCount();
+    setCloudStatus('ok');
+  } catch (e) {
+    console.error('Sync failed', e);
+    setCloudStatus('err');
+    toast('Sync failed: ' + (e && e.message ? e.message : 'unknown error'));
+  }
+}
+
+/* ---- write-through helpers (used on save/delete while signed in) ---- */
+async function cloudPushInvoice(inv) {
+  if (!cloudOn()) return;
+  setCloudStatus('busy');
+  try {
+    const { error } = await CLOUD.client.from('invoices').upsert([invoiceRow(inv)]);
+    if (error) throw error;
+    setCloudStatus('ok');
+  } catch (e) {
+    console.error(e); setCloudStatus('err');
+    toast('Cloud save failed — your invoice is kept on this device.');
+  }
+}
+async function cloudPushCompany() {
+  if (!cloudOn()) return;
+  try {
+    const { error } = await CLOUD.client.from('company_settings')
+      .upsert({ id: 1, data: loadCompany() });
+    if (error) throw error;
+  } catch (e) { console.error(e); setCloudStatus('err'); }
+}
+async function cloudPushPackages() {
+  if (!cloudOn()) return;
+  setCloudStatus('busy');
+  try {
+    const list = loadPackages();
+    const { error } = await CLOUD.client.from('tour_packages').upsert(list.map(pkgToRow));
+    if (error) throw error;
+    const { data: cur, error: e2 } = await CLOUD.client.from('tour_packages').select('id');
+    if (e2) throw e2;
+    const keep = new Set(list.map(p => p.id));
+    const gone = (cur || []).map(r => r.id).filter(id => !keep.has(id));
+    if (gone.length) await CLOUD.client.from('tour_packages').delete().in('id', gone);
+    setCloudStatus('ok');
+  } catch (e) { console.error(e); setCloudStatus('err'); }
+}
+async function cloudDeleteInvoice(id) {
+  if (!cloudOn()) return;
+  try {
+    await CLOUD.client.from('invoice_deletions').upsert({ id });
+    await CLOUD.client.from('invoices').delete().eq('id', id);
+  } catch (e) { console.error(e); setCloudStatus('err'); }
+}
+
+/* ---- auth ---- */
+function openLogin() {
+  $('loginModal').classList.add('open');
+  setTimeout(() => $('loginEmail').focus(), 60);
+}
+function closeLogin() { $('loginModal').classList.remove('open'); }
+
+async function handleSignIn(email, password) {
+  const errEl = $('loginError');
+  errEl.classList.remove('show');
+  setCloudStatus('busy');
+  try {
+    const { error } = await CLOUD.client.auth
+      .signInWithPassword({ email: email.trim(), password });
+    if (error) throw error;
+    closeLogin();                    // onAuthStateChange triggers fullSync
+    return true;
+  } catch (e) {
+    errEl.textContent = e && e.message ? e.message : 'Sign-in failed.';
+    errEl.classList.add('show');
+    setCloudStatus('off');
+    return false;
+  }
+}
+
+/* ============================================================
+   11. EVENTS & INIT
+   ============================================================ */
+function setPath(obj, path, value) {
+  const keys = path.split('.');
+  let o = obj;
+  for (let i = 0; i < keys.length - 1; i++) o = o[keys[i]];
+  o[keys[keys.length - 1]] = value;
+}
+
+function handleField(t) {
+  const path = t.dataset && t.dataset.bind;
+  if (!path) return;
+  let v;
+  if (t.type === 'checkbox') v = t.checked;
+  else if (t.dataset.type === 'number') {
+    v = t.value.trim() === '' ? 0 : parseNum(t.value);
+    if (v < 0) { v = 0; t.value = '0'; }           // no negative numbers
+  } else if (t.dataset.type === 'num-optional') {
+    v = t.value.trim() === '' ? '' : Math.max(parseNum(t.value), 0);
+    if (t.value.trim() !== '' && parseNum(t.value) < 0) t.value = '0';
+  } else v = t.value;
+
+  setPath(state, path, v);
+  dirty = true;
+  if (t.id === 'logoSize') {                      // clamp logo size to 32–200 px
+    v = Math.min(Math.max(Math.round(v) || 58, 32), 200);
+    t.value = v;
+    setPath(state, path, v);
+  }
+  if (path.startsWith('company.')) queueCompanySave();
+  if (t.id === 'custName') clearNameError();
+  if (t.id === 'vatEnabled') $('vatRate').disabled = !t.checked;
+  if (t.id === 'serviceEnabled') $('serviceRate').disabled = !t.checked;
+  if (t.id === 'discountType' || t.id === 'currencySel') updateSuffixes();
+  renderPreview();
+}
+
+function readImage(file, cb) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Please choose an image file.'); return; }
+  const r = new FileReader();
+  r.onload = () => cb(r.result);
+  r.readAsDataURL(file);
+}
+
+function bindEvents() {
+  /* generic two-way binding for every [data-bind] field
+     (delegated at document level: fields live in the form AND the Settings modal) */
+  document.addEventListener('input', e => handleField(e.target));
+  document.addEventListener('change', e => handleField(e.target));
+  $('appForm').addEventListener('submit', e => e.preventDefault());
+
+  /* line items */
+  $('btnAddItem').addEventListener('click', () => {
+    state.items.push(blankItem());
+    dirty = true;
+    renderItemsForm(); renderPreview();
+    const rows = $('itemsRows').querySelectorAll('.item-row .desc-cell');
+    if (rows.length) rows[rows.length - 1].focus();
+  });
+  $('itemsRows').addEventListener('click', e => {
+    const btn = e.target.closest('[data-del]');
+    if (!btn) return;
+    state.items.splice(+btn.dataset.del, 1);
+    if (!state.items.length) state.items.push(blankItem());
+    dirty = true;
+    renderItemsForm(); renderPreview();
+  });
+
+  /* logo & QR uploads */
+  $('logoFile').addEventListener('change', e => {
+    readImage(e.target.files[0], data => {
+      state.company.logoData = data;
+      dirty = true; updateThumbs(); renderPreview(); queueCompanySave();
+      toast('Logo updated.');
+    });
+    e.target.value = '';
+  });
+  $('btnLogoRemove').addEventListener('click', () => {
+    state.company.logoData = '';
+    dirty = true; updateThumbs(); renderPreview(); queueCompanySave();
+  });
+  $('qrFile').addEventListener('change', e => {
+    readImage(e.target.files[0], data => {
+      state.company.qrData = data;
+      dirty = true; updateThumbs(); renderPreview(); queueCompanySave();
+      toast('Payment QR updated.');
+    });
+    e.target.value = '';
+  });
+  $('btnQrRemove').addEventListener('click', () => {
+    state.company.qrData = '';
+    dirty = true; updateThumbs(); renderPreview(); queueCompanySave();
+  });
+
+  /* toolbar */
+  $('btnSave').addEventListener('click', saveCurrentInvoice);
+  $('btnPrint').addEventListener('click', () => window.print());
+  $('btnPdf').addEventListener('click', exportPDF);
+
+  /* The browser's print header/footer prints the page TITLE and date.
+     Show the invoice identity there instead of the truncated app name.
+     (For a fully clean page, the user unticks "Headers and footers" in
+     the print dialog — that checkbox is browser-controlled.) */
+  const APP_TITLE = document.title;
+  window.addEventListener('beforeprint', () => {
+    const who = (state.customer.name || '').trim();
+    document.title = 'Invoice ' + state.number + (who ? ' — ' + who : '') +
+      ' · Lalitpur Holidays';
+  });
+  window.addEventListener('afterprint', () => { document.title = APP_TITLE; });
+  $('btnNew').addEventListener('click', () => {
+    if (dirty && !confirm('Start a new invoice? Unsaved changes to the current one will be lost.')) return;
+    const hadInvoices = loadInvoices().length > 0;
+    state = newInvoiceState(!hadInvoices && !localStorage.getItem(LS_COMPANY));
+    dirty = false;
+    fillForm(); renderPreview();
+    toast('New invoice started.');
+  });
+  $('btnExport').addEventListener('click', exportBackup);
+  $('btnPng').addEventListener('click', exportPNG);
+  $('btnImport').addEventListener('click', () => $('importFile').click());
+  $('importFile').addEventListener('change', e => {
+    if (e.target.files[0]) importBackup(e.target.files[0]);
+    e.target.value = '';
+  });
+
+  /* history modal */
+  $('btnHistory').addEventListener('click', openHistory);
+  $('historyClose').addEventListener('click', closeHistory);
+  $('historyModal').addEventListener('click', e => { if (e.target === $('historyModal')) closeHistory(); });
+  $('historySearch').addEventListener('input', renderHistory);
+  $('historyList').addEventListener('click', e => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const row = btn.closest('.hist-row');
+    if (row) handleHistoryAction(row.dataset.id, btn.dataset.act);
+  });
+
+  /* packages catalog */
+  $('btnPackages').addEventListener('click', () => {
+    $('pkgEditor').classList.remove('open');
+    renderPackages();
+    $('packagesModal').classList.add('open');
+  });
+  $('packagesClose').addEventListener('click', closePackages);
+  $('packagesModal').addEventListener('click', e => { if (e.target === $('packagesModal')) closePackages(); });
+  $('btnNewPackage').addEventListener('click', () => openPkgEditor(null));
+  $('pkgCancel').addEventListener('click', () => $('pkgEditor').classList.remove('open'));
+  $('pkgSave').addEventListener('click', savePkgEditor);
+  $('packagesList').addEventListener('click', e => {
+    const btn = e.target.closest('[data-pkg]');
+    if (!btn) return;
+    const pkg = loadPackages().find(p => p.id === btn.dataset.pkg);
+    if (!pkg) return;
+    if (btn.dataset.act === 'add') {
+      const occ = document.querySelector('.pkg-occ[data-occ="' + pkg.id + '"]');
+      addPackageToInvoice(pkg, occ ? occ.value : 'sharing');
+    }
+    else if (btn.dataset.act === 'edit') openPkgEditor(pkg);
+    else if (btn.dataset.act === 'del' &&
+        confirm('Delete package “' + pkg.name + '”?')) {
+      savePackages(loadPackages().filter(p => p.id !== pkg.id));
+      cloudPushPackages();
+      renderPackages();
+      toast('Package deleted.');
+    }
+  });
+
+  /* settings modal */
+  const closeSettings = () => $('settingsModal').classList.remove('open');
+  $('btnSettings').addEventListener('click', () => $('settingsModal').classList.add('open'));
+  $('settingsClose').addEventListener('click', closeSettings);
+  $('settingsModal').addEventListener('click', e => { if (e.target === $('settingsModal')) closeSettings(); });
+
+  /* overflow (⋯) menu */
+  const closeTbMenu = () => {
+    $('tbMenu').classList.remove('open');
+    $('btnMore').setAttribute('aria-expanded', 'false');
+  };
+  $('btnMore').addEventListener('click', e => {
+    e.stopPropagation();
+    const open = $('tbMenu').classList.toggle('open');
+    $('btnMore').setAttribute('aria-expanded', String(open));
+  });
+  $('tbMenu').addEventListener('click', e => {
+    if (e.target.closest('button')) closeTbMenu();
+  });
+  document.addEventListener('click', e => {
+    if ($('tbMenu').classList.contains('open') &&
+        !$('tbMenu').contains(e.target) && e.target !== $('btnMore')) closeTbMenu();
+  });
+
+  /* auth & cloud */
+  $('btnAuth').addEventListener('click', async () => {
+    if (!cloudReady()) return;
+    if (CLOUD.user) {
+      if (confirm('Sign out ' + CLOUD.user.email +
+          '?\nData stays on this device; nothing is deleted from the database.')) {
+        setCloudStatus('busy');
+        await CLOUD.client.auth.signOut();
+      }
+    } else {
+      openLogin();
+    }
+  });
+  $('loginForm').addEventListener('submit', e => {
+    e.preventDefault();
+    handleSignIn($('loginEmail').value, $('loginPassword').value);
+  });
+  $('loginClose').addEventListener('click', closeLogin);
+  $('loginModal').addEventListener('click', e => { if (e.target === $('loginModal')) closeLogin(); });
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if ($('historyModal').classList.contains('open')) closeHistory();
+    if ($('packagesModal').classList.contains('open')) closePackages();
+    if ($('settingsModal').classList.contains('open')) closeSettings();
+    if ($('loginModal').classList.contains('open')) closeLogin();
+    closeTbMenu();
+  });
+}
+
+/* toast helper */
+let toastTimer;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* --- init --- */
+(function init() {
+  const firstVisit = !localStorage.getItem(LS_COMPANY) && loadInvoices().length === 0;
+  state = newInvoiceState(firstVisit);
+  bindEvents();
+  fillForm();
+  renderPreview();
+  updateHistoryCount();
+  initCloud();
+})();
+</script>
+</body>
+</html>

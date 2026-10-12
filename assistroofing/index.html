@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assist Roofing — Quotation</title>
+<style>
+  :root {
+    --navy-deep: #122747;
+    --navy: #1b3a5f;
+    --navy-text: #16345c;
+    --accent: #2e6da4;
+    --line: #d7dfe8;
+    --shade: #eef3f9;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #e9edf2;
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    color: #1c2733;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .sheet {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 24px auto;
+    padding: 12mm 13mm;
+    background: #fff;
+    box-shadow: 0 2px 14px rgba(15, 30, 55, .18);
+  }
+
+  /* ---------- toolbar (screen only) ---------- */
+  .toolbar {
+    max-width: 210mm;
+    margin: 18px auto -8px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+  .toolbar button {
+    font: inherit;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+  }
+  .toolbar button.ghost { background: #fff; color: var(--accent); }
+  .toolbar button:hover { filter: brightness(1.07); }
+  .toolbar .hint { color: #5a6b7d; }
+
+  /* ---------- header band ---------- */
+  .band {
+    background: linear-gradient(135deg, #142c50 0%, #1d3f6e 100%);
+    border-radius: 6px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .logo-chip {
+    background: #fff;
+    border-radius: 10px;
+    padding: 10px 16px;
+    flex: 0 0 auto;
+  }
+  .logo-chip img { height: 62px; display: block; }
+  .band-right { text-align: right; color: #fff; line-height: 1.5; font-size: 12.5px; }
+  .band-right .site { font-size: 16px; font-weight: 700; letter-spacing: .3px; }
+  .band-right a { color: #cfe2f5; text-decoration: none; }
+  .band-rule { height: 4px; background: var(--accent); border-radius: 0 0 4px 4px; margin-bottom: 22px; }
+
+  /* ---------- title row ---------- */
+  .title-row { display: flex; justify-content: space-between; align-items: flex-end; margin: 4px 0 12px; }
+  h1 {
+    margin: 0;
+    font-size: 30px;
+    letter-spacing: .5px;
+    color: var(--navy-text);
+    font-weight: 800;
+  }
+  .date-line { font-size: 13px; color: #22314a; }
+  .date-line b { color: #101c30; }
+
+  /* ---------- tables ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .meta-table th, .meta-table td {
+    border: 1px solid var(--line);
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .meta-table th {
+    background: var(--shade);
+    color: var(--navy-text);
+    font-weight: 700;
+    width: 50%;
+  }
+  .intro { font-size: 13.5px; line-height: 1.55; color: #26354c; margin: 14px 2px 14px; }
+
+  .works-table th {
+    background: var(--navy);
+    color: #fff;
+    text-align: left;
+    padding: 9px 12px;
+    font-weight: 700;
+    border: 1px solid var(--navy);
+  }
+  .works-table th:last-child, .works-table td:last-child { text-align: right; white-space: nowrap; }
+  .works-table td { border: 1px solid var(--line); padding: 8px 12px; }
+  .works-table td.num { width: 34px; color: #44546a; }
+  .works-table tr:nth-child(even) td { background: #f7fafc; }
+
+  /* ---------- totals ---------- */
+  .totals { margin-top: 14px; font-size: 13.5px; }
+  .totals .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .totals .row .amt { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .totals .grand { border-top: 2px solid var(--navy-text); border-bottom: 2px solid var(--navy-text); font-weight: 700; }
+  .totals .cash-line { background: var(--shade); font-weight: 700; color: var(--navy-text); border-bottom: 2px solid var(--navy-text); }
+
+  /* ---------- note + footer ---------- */
+  .note {
+    margin-top: 18px;
+    background: #fdf7e8;
+    border: 1px solid #e7d9a8;
+    border-radius: 4px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: #4a4433;
+  }
+  .note b { color: #33405c; }
+  footer {
+    margin-top: 34px;
+    text-align: center;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #22314a;
+  }
+  footer .co { font-weight: 800; color: var(--navy-text); letter-spacing: .3px; }
+
+  /* ---------- editing affordances (screen only) ---------- */
+  [contenteditable="true"] { outline: none; border-radius: 3px; }
+  @media screen {
+    [contenteditable="true"]:hover { box-shadow: 0 0 0 1px #b9cbe0 inset; }
+    [contenteditable="true"]:focus { box-shadow: 0 0 0 2px #7fa8d0 inset; background: #f4f8fd; }
+  }
+  .addrow { margin-top: 8px; }
+
+  /* ---------- print ---------- */
+  /* margin is 0 so the browser has no room to draw its own
+     date/title/URL header and footer on the printed page;
+     the sheet's own padding provides the white space instead. */
+  @page { size: A4; margin: 0; }
+  @media print {
+    body { background: #fff; }
+    .sheet { width: auto; min-height: 0; margin: 0; padding: 12mm 13mm; box-shadow: none; }
+    .toolbar, .addrow { display: none !important; }
+    .band { border-radius: 4px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+  <button onclick="window.print()">🖨 Print / Save as PDF</button>
+  <button class="ghost" onclick="newQuotation()">New quotation</button>
+  <button class="ghost" onclick="addRow()">+ Add line</button>
+  <span class="hint">Click any text on the quote to edit it — totals recalculate automatically.</span>
+</div>
+
+<div class="sheet" id="sheet">
+
+  <div class="band">
+    <div class="logo-chip"><img src="assist-logo.jpg" alt="Assist Roofing &amp; Home Solution"></div>
+    <div class="band-right">
+      <div class="site">assistroofing.com.au</div>
+      <div>info@assistroofing.com.au</div>
+      <div>0478 250 790</div>
+      <div>139 Boundary Road, North Melbourne VIC 3051</div>
+    </div>
+  </div>
+  <div class="band-rule"></div>
+
+  <div class="title-row">
+    <h1 contenteditable="true" spellcheck="false">QUOTATION</h1>
+    <div class="date-line"><b>Date:</b> <span id="quoteDate" contenteditable="true" spellcheck="false"></span></div>
+  </div>
+
+  <table class="meta-table">
+    <tr><th contenteditable="true" spellcheck="false">Prepared for</th><th contenteditable="true" spellcheck="false">Property</th></tr>
+    <tr>
+      <td id="clientName" contenteditable="true" spellcheck="false">Jadd Chahal</td>
+      <td id="clientProperty" contenteditable="true" spellcheck="false">29 Evell St, Glenroy</td>
+    </tr>
+  </table>
+
+  <p class="intro" contenteditable="true" spellcheck="false">Thank you for the opportunity to provide a quotation for the roofing works at the above property. The quotation covers the following works, including labour and required materials:</p>
+
+  <table class="works-table">
+    <thead>
+      <tr>
+        <th style="width:34px">No.</th>
+        <th contenteditable="true" spellcheck="false">Description of Works</th>
+        <th style="width:130px" contenteditable="true" spellcheck="false">Amount</th>
+      </tr>
+    </thead>
+    <tbody id="worksBody">
+      <tr><td class="num"></td><td contenteditable="true" spellcheck="false">Re-pointing and re-bedding</td><td contenteditable="true" spellcheck="false" class="amount">$6,750</td></tr>
+      <tr><td class="num"></td><td contenteditable="true" spellcheck="false">Valley changing, valley bedding and pointing</td><td contenteditable="true" spellcheck="false" class="amount">Included</td></tr>
+      <tr><td class="num"></td><td contenteditable="true" spellcheck="false">Sticky and lead flashing</td><td contenteditable="true" spellcheck="false" class="amount">Included</td></tr>
+      <tr><td class="num"></td><td contenteditable="true" spellcheck="false">Bitumen sealing</td><td contenteditable="true" spellcheck="false" class="amount">Included</td></tr>
+      <tr><td class="num"></td><td contenteditable="true" spellcheck="false">Replacement of broken tiles</td><td contenteditable="true" spellcheck="false" class="amount">Included</td></tr>
+    </tbody>
+  </table>
+  <div class="addrow no-print"><button class="ghost" onclick="addRow()" style="font:inherit;font-weight:600;color:var(--accent);background:#fff;border:1px solid var(--accent);border-radius:6px;padding:4px 12px;cursor:pointer">+ Add line</button></div>
+
+  <div class="totals">
+    <div class="row"><span>Quoted price (excluding GST)</span><span class="amt" id="sumSubtotal">$0.00</span></div>
+    <div class="row"><span>GST (<span id="gstRate" contenteditable="true" spellcheck="false">10</span>%)</span><span class="amt" id="sumGst">$0.00</span></div>
+    <div class="row grand"><span>Total including GST</span><span class="amt" id="sumTotal">$0.00</span></div>
+    <div class="row"><span>Cash payment discount</span><span class="amt" id="sumDiscount">−$500.00</span></div>
+    <div class="row cash-line"><span>Cash price</span><span class="amt" id="sumCash">$0.00</span></div>
+  </div>
+
+  <div class="note" contenteditable="true" spellcheck="false"><b>Important:</b> The quoted price includes all labour and materials required for the listed works. GST is shown separately at 10%. The $500 cash discount applies when payment is made by cash.</div>
+
+  <footer>
+    <div class="co">ASSIST ROOFING AND HOME SOLUTION</div>
+    <div>ABN: 67 462 365 195</div>
+    <div><b>Contact:</b> 0478 250 790 &nbsp;·&nbsp; <b>Email:</b> info@assistroofing.com.au</div>
+    <div>139 Boundary Road, North Melbourne VIC 3051 &nbsp;·&nbsp; assistroofing.com.au</div>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var body = $('worksBody');
+
+  function money(n) {
+    return n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' });
+  }
+  function parseAmount(text) {
+    var t = (text || '').replace(/[^0-9.\-]/g, '');
+    if (!t || t === '-' || t === '.') return null;
+    var n = parseFloat(t);
+    return isNaN(n) ? null : n;
+  }
+
+  var cashDiscount = 500; // standard cash discount, editable on the quote
+
+  function recalc() {
+    // auto-number the rows
+    var rows = body.querySelectorAll('tr');
+    var subtotal = 0;
+    for (var i = 0; i < rows.length; i++) {
+      rows[i].querySelector('td.num').textContent = i + 1;
+      var cell = rows[i].querySelector('.amount');
+      var v = parseAmount(cell.textContent);
+      if (v !== null) subtotal += v;
+    }
+    var rate = parseAmount($('gstRate').textContent);
+    if (rate === null) rate = 0;
+    var gst = subtotal * rate / 100;
+    var total = subtotal + gst;
+    var cash = subtotal - cashDiscount;
+
+    $('sumSubtotal').textContent = money(subtotal);
+    $('sumGst').textContent = money(gst);
+    $('sumTotal').textContent = money(total);
+    $('sumCash').textContent = money(cash);
+    // don't rewrite the discount cell while the user is typing in it
+    if (document.activeElement !== discountRow) {
+      discountRow.textContent = '−' + money(cashDiscount);
+    }
+  }
+
+  // the discount row itself is editable
+  var discountRow = document.querySelector('.totals .row:nth-child(4) .amt');
+  discountRow.setAttribute('contenteditable', 'true');
+  discountRow.setAttribute('spellcheck', 'false');
+  discountRow.addEventListener('input', function () {
+    var v = parseAmount(discountRow.textContent);
+    if (v !== null) cashDiscount = v;
+    recalc();
+  });
+  discountRow.addEventListener('blur', recalc);
+
+  // recalc whenever anything on the sheet changes
+  $('sheet').addEventListener('input', recalc);
+
+  function addRow() {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td class="num"></td>' +
+      '<td contenteditable="true" spellcheck="false"></td>' +
+      '<td contenteditable="true" spellcheck="false" class="amount"></td>';
+    body.appendChild(tr);
+    recalc();
+    tr.children[1].focus();
+  }
+
+  function newQuotation() {
+    if (!confirm('Start a new quotation? This clears the client, property and all line items.')) return;
+    $('clientName').textContent = '';
+    $('clientProperty').textContent = '';
+    body.innerHTML = '';
+    for (var i = 0; i < 5; i++) {
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td class="num"></td>' +
+        '<td contenteditable="true" spellcheck="false"></td>' +
+        '<td contenteditable="true" spellcheck="false" class="amount"></td>';
+      body.appendChild(tr);
+    }
+    discountRow.textContent = '−' + money(500);
+    recalc();
+    $('clientName').focus();
+  }
+  window.addRow = addRow;
+  window.newQuotation = newQuotation;
+
+  // date defaults to today on each load
+  $('quoteDate').textContent = new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  recalc();
+})();
+</script>
+</body>
+</html>
