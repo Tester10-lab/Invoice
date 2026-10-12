@@ -698,6 +698,11 @@ button{font-family:inherit}
           </select>
           <p class="hint">Shown on the invoice: a child below 7 gets the selected rate only while sharing; occupying a full seat/bed is always charged.</p>
         </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button type="button" class="file-btn" id="btnSyncQty" style="width:auto">⟳ Sync Qty with Travelers (Adults + Children)</button>
+          <p class="hint">Copies Adults + Children from above into the first line item's quantity (for tour packages priced per person).</p>
+        </div>
       </div>
     </details>
 
@@ -2350,6 +2355,21 @@ function bindEvents() {
     dirty = false;
     fillForm(); renderPreview();
     toast('New invoice started.');
+  });
+  $('btnSyncQty').addEventListener('click', () => {
+    const adults = parseNum($('tripAdults').value || 0);
+    const children = parseNum($('tripChildren').value || 0);
+    const total = adults + children;
+    if (total === 0) { toast('Enter Adults and/or Children first.', 'warn'); return; }
+    if (!state.items.length) state.items.push(blankItem());
+    state.items[0].qty = total;
+    state.items[0].unit = 'person';
+    if (!state.items[0].desc || state.items[0].desc.toLowerCase().includes('package')) {
+      state.items[0].desc = state.trip.package || 'Tour Package';
+    }
+    dirty = true;
+    fillForm(); renderPreview();
+    toast('First item qty set to ' + total + ' (Adults ' + adults + ' + Children ' + children + ')');
   });
   $('btnExport').addEventListener('click', exportBackup);
   $('btnPng').addEventListener('click', exportPNG);
