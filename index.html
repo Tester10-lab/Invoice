@@ -1057,6 +1057,13 @@ const $ = id => document.getElementById(id);
 const clone = o => JSON.parse(JSON.stringify(o));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
+/** Admin check: admin can manage company settings and delete saved invoices.
+    Configure admin emails in the ADMIN_EMAILS array below. */
+const ADMIN_EMAILS = ['admin@lalitpurholidays.com']; // Add admin emails here
+function isAdmin() {
+  return CLOUD.user && ADMIN_EMAILS.includes(CLOUD.user.email);
+}
+
 function blankItem() { return { desc: '', unit: 'person', qty: 1, price: 0 }; }
 
 /** Create a fresh invoice, reusing the saved company profile. */
@@ -1074,12 +1081,12 @@ function newInvoiceState(withSamples) {
     customer: { name: '', phone: '', email: '', address: '', nationality: '' },
     trip: { package: '', start: '', end: '', adults: '', children: '', childPolicy: 'half' },
     items: withSamples ? clone(SAMPLE_ITEMS) : [blankItem()],
-    opts: {
-      discountType: 'flat', discountValue: 0,
-      vatEnabled: true, vatRate: 13,
-      serviceEnabled: false, serviceRate: 10,
-      paid: 0,
-    },
+opts: {
+	      discountType: 'flat', discountValue: 0,
+	      vatEnabled: false, vatRate: 13,
+	      serviceEnabled: false, serviceRate: 10,
+	      paid: 0,
+	    },
     notes: DEFAULT_NOTES,
     terms: DEFAULT_TERMS,
     savedAt: null,
@@ -1564,6 +1571,7 @@ function renderHistory() {
   $('historyList').innerHTML = list.length ? list.map(inv => {
     const t = computeTotals(inv);
     const st = effectiveStatus(inv, t);
+    const showDelete = inv.savedAt && isAdmin();
     return '<div class="hist-row" data-id="' + inv.id + '">' +
       '<span class="num">' + esc(inv.number) + '</span>' +
       '<span>' + fmtDate(inv.date) + '</span>' +
@@ -1578,7 +1586,7 @@ function renderHistory() {
       '<span class="hist-actions">' +
         '<button type="button" class="mini-btn" data-act="open">Open</button>' +
         '<button type="button" class="mini-btn" data-act="dup">Duplicate</button>' +
-        '<button type="button" class="mini-btn danger" data-act="del">Delete</button>' +
+        (showDelete ? '<button type="button" class="mini-btn danger" data-act="del">Delete</button>' : '') +
       '</span></div>';
   }).join('') : '<div class="hist-empty">' + (q ? 'No invoices match your search.' : 'No saved invoices yet — click Save to store one.') + '</div>';
 }
@@ -1614,6 +1622,15 @@ function handleHistoryAction(id, act) {
     closeHistory();
     toast('Duplicated as ' + state.number + ' — review and save.');
   } else if (act === 'del') {
+    if (!inv.savedAt) {
+      // not saved yet - just remove from history view if it was there
+      toast('Invoice not saved — nothing to delete.', 'warn');
+      return;
+    }
+    if (!isAdmin()) {
+      toast('Admin only: Only admins can delete saved invoices.', 'warn');
+      return;
+    }
     if (!confirm('Delete invoice ' + inv.number + '? This cannot be undone.')) return;
     saveInvoices(list.filter(x => x.id !== id));
     recordLocalDelete(id);          // tombstone: deletion propagates to all devices
@@ -2334,8 +2351,14 @@ function bindEvents() {
 
   /* toolbar */
   $('btnSave').addEventListener('click', saveCurrentInvoice);
-  $('btnPrint').addEventListener('click', () => window.print());
-  $('btnPdf').addEventListener('click', exportPDF);
+  $('btnPrint').addEventListener('click', () => {
+    if (!state.savedAt) { toast('Save the invoice first before printing.', 'warn'); return; }
+    window.print();
+  });
+  $('btnPdf').addEventListener('click', () => {
+    if (!state.savedAt) { toast('Save the invoice first before exporting PDF.', 'warn'); return; }
+    exportPDF();
+  });
 
   /* The browser's print header/footer prints the page TITLE and date.
      Show the invoice identity there instead of the truncated app name.
@@ -2423,7 +2446,10 @@ function bindEvents() {
 
   /* settings modal */
   const closeSettings = () => $('settingsModal').classList.remove('open');
-  $('btnSettings').addEventListener('click', () => $('settingsModal').classList.add('open'));
+  $('btnSettings').addEventListener('click', () => {
+    if (!isAdmin()) { toast('Admin only: Company settings.', 'warn'); return; }
+    $('settingsModal').classList.add('open');
+  });
   $('settingsClose').addEventListener('click', closeSettings);
   $('settingsModal').addEventListener('click', e => { if (e.target === $('settingsModal')) closeSettings(); });
 
